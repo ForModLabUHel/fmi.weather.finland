@@ -27,6 +27,7 @@ years <- 2000:2001
 
 weather_in <- extract_weather_from_FMI(pathdata,years,polygon = sp_polygons)
 
+cords_tab
 
 weather_in <- extract_weather_from_FMI(pathdata,years,myCoords = gg)
 weather_in
