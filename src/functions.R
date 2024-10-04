@@ -422,6 +422,10 @@ extract_weather_from_FMI <- function(pathdata, years, polygon = NULL, myCoords =
   # calculate VPD
   database_all[,VPD:=VPD_from_rh_tmin_tmax(Rh,Tmin,Tmax)]
   
+  ####delete variables that are not used in PREBAS
+  database_all$Rh <- NULL
+  database_all$Globrad <- NULL
+  
   return(database_all)
 }
 
