@@ -1,5 +1,4 @@
 source("scripts/settings.R")
-source("scripts/tempdir_test.R")
 
 # Get the temporary file path from the command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
