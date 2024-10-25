@@ -1,0 +1,31 @@
+fmi_top_level_funs: r/fmi_top_level_funs.R
+fmi_init_funs: r/init_setup.R
+fmi_sources:
+  - r/fmi_worker_funs.R
+  - r/file_funs.R
+  - r/netcdf.R
+runner_path: scripts/fmi_parallel_runner.R
+test_helper_funs:
+  - tests/helper_functions.R
+required_libs:
+  - aws.s3
+  - checkmate
+  - data.table
+  - doParallel
+  - dplyr
+  - foreach
+  - geosphere
+  - lubridate
+  - ncdf4
+  - parallel
+  - parallelly
+  - raster
+  - sp
+  - stringr
+  - testthat
+  - tools
+  - withr
+time_zone: Europe/Helsinki
+locale: C.UTF-8
+
+

@@ -2,3 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# Folders
+local_data/
+
+# Files
+*test.R
+code_r.txt
