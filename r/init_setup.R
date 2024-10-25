@@ -5,11 +5,12 @@
 #' and ensures cleanup on exit.
 #'
 #' @param repo_url A character string specifying the URL of the repository to clone.
+#' @param branch A character string specifying the branch to clone. Default is "main".
 #' @param ... Additional parameters to pass to the main function.
 #' @import processx yaml checkmate
 #' @return The output of the main function.
 #' @export
-setup_and_run <- function(repo_url, ...) {
+setup_and_run <- function(repo_url, branch = "main", ...) {
   # Load required packages
   if (!requireNamespace("processx", quietly = TRUE)) install.packages("processx")
   if (!requireNamespace("yaml", quietly = TRUE)) install.packages("yaml")
@@ -32,7 +33,7 @@ setup_and_run <- function(repo_url, ...) {
   
   # Clone the repository
   try({
-    processx::run("git", c("clone", repo_url, local_path))
+    processx::run("git", c("clone", "-b", branch, repo_url, local_path))
     assert_directory(local_path, access = "r")
   }, silent = TRUE)
   
