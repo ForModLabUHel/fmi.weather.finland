@@ -32,15 +32,18 @@ setup_and_run <- function(repo_url, branch = "main", ...) {
   local_path <- tempfile(pattern = "repo_")
   
   # Clone the repository
-  try({
-    processx::run("git", c("clone", "-b", branch, repo_url, local_path))
+  tryCatch({
+    clone_obj <- processx::run("git", c("clone", "-b", branch, repo_url, local_path))
     assert_directory(local_path, access = "r")
-  }, silent = TRUE)
-  
-  # Check if cloning was successful
-  if (!dir.exists(local_path)) {
-    stop("Error: Cloning the repository failed.")
-  }
+  }, error = function(clone_obj) {
+    message("Error cloning repo!")
+    message(clone_obj$stderr)
+  }, finally = {
+    # Check if cloning was successful
+    if (dir.exists(local_path)) {
+      print(paste0("Cloned repo successfully."))
+    }
+  })
   
   # Set the working directory to the temporary directory
   setwd(local_path)
