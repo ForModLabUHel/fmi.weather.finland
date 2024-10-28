@@ -41,9 +41,6 @@ eval(parse(text = init_funs))
 
 
 
-
-source("r/init_setup.R")
-
 library(data.table)
 
 example_req_coords_dt <- data.table(
@@ -61,9 +58,9 @@ req_coords <- as.matrix(example_req_coords_dt[, c("E", "N")]) # The coords are p
 params <- list(resolution = 1, req_coords = req_coords, years = c(1961:1962))
 
 save_path <- getwd()
-repo_url <- "git.com"
+repo_url <- "https://github.com/ForModLabUHel/fmi.weather.finland.git"
 
-setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url))
+setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
 
 # RUN
 result <- do.call(setup_and_run, setup_and_run_args)

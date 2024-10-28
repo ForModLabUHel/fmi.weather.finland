@@ -23,7 +23,7 @@ setup_and_run <- function(repo_url, branch = "main", ...) {
   # Input validation
   assert_string(repo_url, null.ok = FALSE)
   
-  message("Url: ", repo_url)
+  print(paste0("Url: ", repo_url))
   
   # Save the original working directory
   original_wd <- getwd()
