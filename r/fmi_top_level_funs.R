@@ -198,15 +198,21 @@ main_function <- function(runner_path = "scripts/fmi_parallel_runner.R",
   return_list <- do.call(get_fmi_data_from_allas, c(args, list(opts = opts)))
   
   assert_directory(save_path, access = "rw")
+  assert_file_exists(runner_path)
   
   # Save the return_list to a temporary file and unlink it on exit
   temp_file <- tempfile(fileext = ".rds")
   saveRDS(list(return_list = return_list, save_path = save_path, opts = opts), file = temp_file)
   on.exit(unlink(temp_file), add = TRUE)
+  assert_file_exists(temp_file)
   
-  # Call the script that runs the parallel function using system()
-  # system(paste("Rscript", runner_path, temp_file))
-  processx::run("Rscript", c(runner_path, temp_file), echo = T)
+  # Call the script that runs the parallel function using processx
+  tryCatch({
+    runner_obj <- processx::run("Rscript", c(runner_path, temp_file), echo = T)
+  }, error = function(runner_obj) {
+    message(runner_obj$stderr)
+    stop(paste0("Error running ", runner_path))
+  })
   
 }
 
