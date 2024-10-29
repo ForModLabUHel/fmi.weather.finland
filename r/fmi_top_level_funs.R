@@ -241,22 +241,6 @@ main_function <- function(env,
 
 
 
-test_main_function <- function(runner_path = "scripts/fmi_parallel_runner.R",
-                          save_path = getwd(),
-                          opts = NULL,
-                          ...) {
-  
-  # Get params for function
-  args <- list(...)
-  
-  print(paste0("args: ", args))
-  
-  return(save_path)
-  
-}
-
-
-
 
 
 
