@@ -54,11 +54,28 @@ get_in_parallel <- function(data, fun, cores=8, libs = list(), sources = list(),
 
 
 
-setup_environment <- function(sources, required_libs, ...) {
-  print(paste0("Running setup_environment..."))
+setup_new_env <- function(env, ...){
   
-  invisible(lapply(sources, source))
-  load_libraries(required_libs, ...)
+  # Input validations
+  assert_environment(env)
+  
+  with(env, {
+    config_file <- "config.yaml"
+    assert_file_exists(config_file)
+    config <- yaml::read_yaml(config_file)
+    
+    sources <- config$fmi_sources
+    required_libs <- config$required_libs
+    runner_path <- config$runner_path
+    
+  })
+  # Source the files within the provided or default environment
+  invisible(lapply(env$sources, function(x) source(x, local = env)))
+  
+  # Load the required libraries
+  env$load_libraries(env$required_libs, ...)
+  
+  return(env)
 }
 
 
@@ -186,10 +203,15 @@ get_nc_vars_parallel <- function(return_list, opts = NULL){
 }
 
 
-main_function <- function(runner_path = "scripts/fmi_parallel_runner.R",
+main_function <- function(env,
                           save_path = getwd(),
                           opts = NULL,
                           ...) {
+  
+  # Input validations
+  assert_environment(env)
+  assert_directory(save_path, access = "rw")
+  assert_file_exists(env$runner_path)
   
   # Get params for function
   args <- list(...)
@@ -197,21 +219,22 @@ main_function <- function(runner_path = "scripts/fmi_parallel_runner.R",
   # Call the get_fmi_data_from_allas with the provided params
   return_list <- do.call(get_fmi_data_from_allas, c(args, list(opts = opts)))
   
-  assert_directory(save_path, access = "rw")
-  assert_file_exists(runner_path)
+  # Add objects to env
+  data <- list(return_list = return_list, opts = opts, save_path = save_path)
+  env$data <- data
   
   # Save the return_list to a temporary file and unlink it on exit
   temp_file <- tempfile(fileext = ".rds")
-  saveRDS(list(return_list = return_list, save_path = save_path, opts = opts), file = temp_file)
+  saveRDS(list(env = env), file = temp_file)
   on.exit(unlink(temp_file), add = TRUE)
   assert_file_exists(temp_file)
   
   # Call the script that runs the parallel function using processx
   tryCatch({
-    runner_obj <- processx::run("Rscript", c(runner_path, temp_file), echo = T)
+    runner_obj <- processx::run("Rscript", c(env$runner_path, temp_file), echo = T)
   }, error = function(runner_obj) {
     message(runner_obj$stderr)
-    stop(paste0("Error running ", runner_path))
+    stop(paste0("Error running ", env$runner_path))
   })
   
 }

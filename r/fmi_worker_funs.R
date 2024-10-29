@@ -198,8 +198,8 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
 #' This function processes a data.table by applying a specified function to a variable and then joins the results.
 #'
 #' @param dt A data.table object.
-#' @param fun A function to apply to the variable specified by `process_var_name`.
-#' @param fun_args A list of additional arguments to pass to `fun`.
+#' @param FUN A function to apply to the variable specified by `process_var_name`.
+#' @param FUN_args A list of additional arguments to pass to `fun`.
 #' @param process_var_name A character string specifying the name of the variable to process.
 #' @param join_by_vec A character vector specifying the columns to join by.
 #'
@@ -251,7 +251,7 @@ process_from_grouped_dt_and_join <- function(dt, FUN, FUN_args, process_var_name
 #'
 #' This function loads a lookup coordinates .rdata file from an S3 bucket and returns a filtered data table based on the resolution.
 #'
-#' @param resolution A numeric or character specifying the resolution.
+#' @param resolution A numeric specifying the resolution.
 #' @param ... Additional arguments passed to s3read_using.
 #' @return A data.table filtered by the specified resolution.
 #' @import data.table

@@ -11,6 +11,8 @@
 #' @return The output of the main function.
 #' @export
 setup_and_run <- function(repo_url, branch = "main", ...) {
+  
+  
   # Load required packages
   if (!requireNamespace("processx", quietly = TRUE)) install.packages("processx")
   if (!requireNamespace("yaml", quietly = TRUE)) install.packages("yaml")
@@ -50,53 +52,24 @@ setup_and_run <- function(repo_url, branch = "main", ...) {
     unlink(local_path, recursive = TRUE)  # Remove the temporary directory
   }, add = TRUE)
   
-  # Load environment
-  if (file.exists("scripts/settings.R")) {
-    source("scripts/settings.R")
-  } else {
-    stop("Error: settings.R not found.")
-  }
+  
+  assert_file_exists("r/fmi_top_level_funs.R")
+  
+  # Setup new environment
+  print(paste0("Creating environment..."))
+  env <- new.env()
+  source("r/fmi_top_level_funs.R", local = env)
+  env <- env$setup_new_env(env)
   
   # Function arguments
-  main_function_args <- c(list(...), list(runner_path = runner_path))
+  main_function_args <- c(list(...), list(env = env))
   
   # Run the main function with parameters
-  result <- do.call(main_function, main_function_args)
+  result <- do.call(env$main_function, main_function_args)
   
   return(result)
 }
 
-
-
-test_setup_and_run <- function(repo_url, ...) {
-  
-  # Load required packages
-  library(processx)
-  library(yaml)
-  library(checkmate)
-  
-  # Input validation
-  assert_string(repo_url, null.ok = FALSE)
-  
-  print(paste0("Url: ", repo_url))
-  
-  # Save the original working directory
-  original_wd <- getwd()
-  
-  # Set the working directory to the temporary directory
-  setwd(original_wd)
-  
-  # Load environment
-  source("scripts/settings.R")
-  
-  # Function arguments
-  main_function_args <- c(list(...), list(runner_path = runner_path))
-  
-  # Run the main function with parameters
-  result <- do.call(main_function, main_function_args)
-  
-  return(result)
-}
 
 
 
