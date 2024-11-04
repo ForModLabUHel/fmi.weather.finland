@@ -1,5 +1,7 @@
 # This script is for extracting FMI meteorological data that is stored in Allas.
-# The script only works when running on Puhti.
+# The script must be run on Puhti. First load and run the fetch_file_from_github function
+# to load the init function. Then provide the parameters and run with either a
+# set of requested coordinates or a polygon.
 
 
 ### ------------------------------ RUN FIRST ------------------------------- ###
@@ -41,29 +43,84 @@ eval(parse(text = init_funs))
 
 
 
-library(data.table)
+# SET PARAMETERS
+
+resolution <- 5 # Resolution in km (1, 5 or 9)
+years <- c(1961) # For which years to extract (1961:2023 are full years)
+save_path <- paste0(getwd()) # Where to save the extracted data.table as .rdata
+repo_url <- "https://github.com/ForModLabUHel/fmi.weather.finland.git" # Project repository to use
+
+
+
+
+
+### ----------------------- EXAMPLE WITH COORDS ---------------------------- ###
+
 
 example_req_coords_dt <- data.table(
-  id = 1:7,
-  E = c(95000, 255000, 385000, 465000, 505000, 505000, 505000),
-  N = c(6705000, 6765000, 6805000, 6945000, 7145000, 7335000, 7565000),
-  x = c(19.673, 22.480, 24.851, 26.318, 27.104, 27.111, 27.120),
-  y = c(60.295, 60.959, 61.377, 62.647, 64.441, 66.143, 68.203)
+  id = 1:25,
+  E = c(
+    300189.9, 301189.9, 302189.9, 303189.9, 304189.9, 
+    300189.9, 301189.9, 302189.9, 303189.9, 304189.9, 
+    300189.9, 301189.9, 302189.9, 303189.9, 304189.9, 
+    300189.9, 301189.9, 302189.9, 303189.9, 304189.9, 
+    300189.9, 301189.9, 302189.9, 303189.9, 304189.9
+  ),
+  N = c(
+    6804275, 6804275, 6804275, 6804275, 6804275, 
+    6803275, 6803275, 6803275, 6803275, 6803275, 
+    6802275, 6802275, 6802275, 6802275, 6802275, 
+    6801275, 6801275, 6801275, 6801275, 6801275, 
+    6800275, 6800275, 6800275, 6800275, 6800275
+  )
 )
 
 
 req_coords <- as.matrix(example_req_coords_dt[, c("E", "N")]) # The coords are passed as a matrix
 
 # Set parameters
-params <- list(resolution = 1, req_coords = req_coords, years = c(1961:1962))
-
-save_path <- getwd()
-repo_url <- "https://github.com/ForModLabUHel/fmi.weather.finland.git"
+params <- list(req_coords = req_coords, resolution = resolution, years = years)
 
 setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
 
 # RUN
 result <- do.call(setup_and_run, setup_and_run_args)
+
+### ------------------------------------------------------------------------ ###
+
+
+
+
+
+
+### ----------------------- EXAMPLE WITH POLYGON --------------------------- ###
+
+# Coordinates form a closed loop
+WGScoor <- data.table(lon = c(300000, 305000, 305000, 300000, 300000),
+                      lat = c(6800000, 6800000, 6805000, 6805000, 6800000))
+
+# Convert to matrix
+coords_matrix <- as.matrix(WGScoor)
+
+# Create a Polygon
+polygon <- Polygon(coords_matrix)
+
+# Create Polygons object
+polygons <- Polygons(list(polygon), ID = "1")
+
+# Create SpatialPolygons object with CRS
+spatial_polygons <- SpatialPolygons(list(polygons), proj4string = CRS("EPSG:3067"))
+
+# Set parameters
+params <- list(polygon = spatial_polygons, resolution = resolution, years = years)
+
+setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
+
+# RUN
+result <- do.call(setup_and_run, setup_and_run_args)
+
+
+### ------------------------------------------------------------------------ ###
 
 
 

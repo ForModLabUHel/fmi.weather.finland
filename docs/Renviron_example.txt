@@ -1,0 +1,8 @@
+# Set TMPDIR=LOCAL_SCRATCH for batch jobs if using #SBATCH --gres=nvme:<GB of fast storage>
+TMPDIR=${LOCAL_SCRATCH}
+TMP="/scratch/project_2000994/Rtmp_heap"
+AWS_S3_ENDPOINT="a3s.fi"
+AWS_REGION=""
+TZ="Europe/Helsinki"
+LANG="C.UTF-8"
+LC_CTYPE="C.UTF-8"
