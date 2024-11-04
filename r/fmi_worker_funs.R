@@ -39,17 +39,17 @@
 extract_nc_vars_by_polygon_coords <- function(nc_input, polygon = NULL, 
                                               req_coords = NULL, lon_name = "Lon",
                                               lat_name = "Lat", ...) {
-
+  
   # Open NetCDF file or use existing ncdf4 object
   nc_info <- open_nc_file(nc_input)
   nc_ds <- nc_info$nc_ds
   should_close <- nc_info$should_close
-
+  
   # Ensure the NetCDF file is closed if it was opened by this function
   if (should_close) {
     on.exit(nc_close(nc_ds))
   }
-
+  
   assert_list(list(...), null.ok = TRUE) # Ensure additional arguments are a list (if provided)
   assert_class(polygon, "SpatialPolygons", null.ok = TRUE) # Ensure the polygon is a SpatialPolygons object if provided
   assert_matrix(req_coords, null.ok = TRUE) # Ensure req_coords is a matrix if provided
@@ -57,9 +57,9 @@ extract_nc_vars_by_polygon_coords <- function(nc_input, polygon = NULL,
   filename <- if (is.character(nc_input)) nc_input else "netCDF object"
   
   print(paste0("Processing ", filename, "..."))
-
+  
   get_netcdf_by_nearest_coords_args <- list(...)
-
+  
   # Extract coordinates within the specified polygon if req_coords is not provided
   if (is.null(req_coords)) {
     if (is.null(polygon)) {
@@ -73,23 +73,24 @@ extract_nc_vars_by_polygon_coords <- function(nc_input, polygon = NULL,
   } else {
     print(paste0("Using provided coordinates..."))
   }
-
+  
   
   # Prepare arguments for the get_netcdf_by_nearest_coords function
   get_netcdf_by_nearest_coords_args <- c(get_netcdf_by_nearest_coords_args,
                                          list(nc_input = nc_input,
                                               req_coords = req_coords))
-
+  
   print(paste0("Getting variables..."))
-
+  
   # Extract variables from the nc file
   nc_vars_dt <- do.call(get_netcdf_by_nearest_coords, get_netcdf_by_nearest_coords_args)
-
+  
   print(paste0("Done."))
-
+  
   # Return the extracted variables
   return(nc_vars_dt)
 }
+
 
 
 
@@ -177,7 +178,7 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
   args <- c(list(req_coords = req_coords, dim_x = coords_x, dim_y = coords_y), ...)
   req_nc_coords <- do.call(find_nearest_coords, args)
   
-  return(req_nc_coords)
+  return(unique(req_nc_coords))
 }
 
 
@@ -192,14 +193,82 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
 ##### ------------------- START PROCESS DATA FUNCTIONS ------------------- #####
 
 
+#' Extract Coordinates within a Polygon with Resolution
+#'
+#' This function extracts coordinates from a reference data table that fall within a given polygon.
+#' If no points are found within the polygon, the function returns the centroid of the polygon.
+#'
+#' @param polygon_in A `SpatialPolygons` object representing the polygon.
+#' @param reference_dt A `data.table` with x and y coordinates as columns.
+#' @param resolution A numeric value representing the resolution (in km) for the output.
+#' @param ... Additional arguments (currently not used).
+#' @return A matrix of coordinates that fall within the polygon, or the centroid of the polygon if no points are found.
+#' @details 
+#' This function performs the following steps:
+#' \itemize{
+#'   \item Checks if the `polygon_in` is NULL. If so, it returns NULL.
+#'   \item Sets the coordinates and projection string for the `reference_dt`.
+#'   \item Identifies points within the polygon using the `over` function.
+#'   \item If no points are found, it calculates and returns the centroid of the polygon.
+#' }
+#' @examples
+#' \dontrun{
+#' library(data.table)
+#' library(sp)
+#' library(checkmate)
+#' library(sf)
+#' 
+#' # Create example data
+#' reference_dt <- data.table(x = c(300000, 301000, 302000), y = c(6800000, 6801000, 6802000))
+#' coords <- cbind(lon = c(300000, 305000, 305000, 300000), lat = c(6800000, 6800000, 6805000, 6805000))
+#' polygon_in <- SpatialPolygons(list(Polygons(list(Polygon(coords)), "1")))
+#' 
+#' # Use the function
+#' coords_matrix <- extract_polygon_coords_with_res(polygon_in, reference_dt, 5)
+#' print(coords_matrix)
+#' }
+#' @importFrom data.table as.data.table setnames
+#' @importFrom sp coordinates proj4string over
+#' @importFrom sf st_as_sf st_centroid st_coordinates
+#' @importFrom checkmate assert_class assert_data_table assert_numeric
+#' @export
+extract_polygon_coords_with_res <- function(polygon_in, reference_dt, resolution, ...) {
+  # Input validation
+  assert_class(polygon_in, classes = "SpatialPolygons", null.ok = TRUE)
+  assert_data_table(reference_dt, min.rows = 1, null.ok = F)
+  assert_names(names(reference_dt), must.include = c("x", "y"))
+  assert_numeric(resolution, lower = 0)
+  
+  if (is.null(polygon_in)) {
+    return(NULL)
+  }
+  
+  coordinates(reference_dt) <- ~x + y
+  proj4string(reference_dt) <- crs(polygon_in)
+  coordSel <- reference_dt[complete.cases(over(reference_dt, polygon_in)), ]
+  coordSel <- as.data.table(coordSel)
+  
+  char_res <- paste0(resolution, "km-by-", resolution, "km")
+  print(paste0("Found ", nrow(coordSel), " point(s) within polygon at ", char_res, "."))
+  if (nrow(coordSel) == 0) {
+    print("Using polygon centroid.")
+    coordSel <- as.data.table(st_coordinates(st_centroid(st_as_sf(polygon_in)))) # Get polygon centroid as data.table
+    setnames(coordSel, new = c("x", "y"))
+  }
+  coords_mat <- as.matrix(coordSel[, .(x, y)])
+  return(coords_mat)
+}
+
+
+
 
 #' Process and Join Data Tables
 #'
 #' This function processes a data.table by applying a specified function to a variable and then joins the results.
 #'
 #' @param dt A data.table object.
-#' @param FUN A function to apply to the variable specified by `process_var_name`.
-#' @param FUN_args A list of additional arguments to pass to `fun`.
+#' @param fun A function to apply to the variable specified by `process_var_name`.
+#' @param fun_args A list of additional arguments to pass to `fun`.
 #' @param process_var_name A character string specifying the name of the variable to process.
 #' @param join_by_vec A character vector specifying the columns to join by.
 #'
@@ -246,12 +315,25 @@ process_from_grouped_dt_and_join <- function(dt, FUN, FUN_args, process_var_name
 ##### ------------------- START S3 FUNCTIONS ------------------- #####
 
 
+custom_s3read_using <- function(FUN, ..., object, bucket, opts = NULL, filename = NULL, temp_dir = Sys.getenv("TMPDIR")){
+  
+  assert_directory(temp_dir, access = "rw")
+  
+  temp_file <- tempfile(tmpdir = temp_dir, fileext = paste0(".", tools::file_ext(object)))
+  on.exit(unlink(temp_file, recursive = T))
+  
+  r <- do.call("save_object", c(list(bucket = bucket, object = object, file = temp_file), opts))
+  
+  return(FUN(temp_file, ...))
+}
+
+
 
 #' Get Lookup Data Table with Resolution from S3 Bucket
 #'
 #' This function loads a lookup coordinates .rdata file from an S3 bucket and returns a filtered data table based on the resolution.
 #'
-#' @param resolution A numeric specifying the resolution.
+#' @param resolution A numeric or character specifying the resolution.
 #' @param ... Additional arguments passed to s3read_using.
 #' @return A data.table filtered by the specified resolution.
 #' @import data.table
@@ -386,7 +468,7 @@ load_libraries <- function(pkgs = c(), ...) {
   }
   
   for (pkg in pkgs) {
-    if (!suppressMessages(require(pkg, character.only = TRUE))) {
+    if (!suppressMessages(require(pkg, character.only = TRUE))){
       install.packages(pkg, dependencies = TRUE)
       library(pkg, character.only = TRUE)
     }

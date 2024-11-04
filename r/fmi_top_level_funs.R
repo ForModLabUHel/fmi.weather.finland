@@ -118,13 +118,18 @@ process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc
   print(paste0("Resolution is ", char_res, "."))
   cat("\n")
   
-  fmi_lookup_dt <- get_lookup_dt_with_res_from_bucket(resolution = resolution, FUN = load_rdata_file, 
-                                                      bucket = fmi_allas_bucket_name, object = lookup_dt_name, 
-                                                      opts = list(region = region))
+  filtered_fmi_lookup_dt <- get_lookup_dt_with_res_from_bucket(resolution = resolution, FUN = load_rdata_file, 
+                                                               bucket = fmi_allas_bucket_name, object = lookup_dt_name, 
+                                                               opts = list(region = region))
+  
+  if(is.null(req_coords)) {
+    req_coords <- extract_polygon_coords_with_res(polygon = polygon, reference_dt = filtered_fmi_lookup_dt, 
+                                                  resolution = resolution)
+  }
   
   
   if(is.null(req_nc_coords)) {
-    req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = fmi_lookup_dt, round_dec = round_dec, 
+    req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, 
                                        is_longlat = FALSE)
   }
   
@@ -137,9 +142,9 @@ process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc
   dt_years <- nc_files_grouped_dt[year %in% years]
   split_dts <- split(dt_years, by = "id")
   
-
+  
   return(list(split_dts = split_dts, FUN_args = FUN_args))
-
+  
 }
 
 
