@@ -51,9 +51,7 @@ The Allas module must be loaded. This only needs to be done once for a project.
     
 8. **Running as a batch job**
 
-    1. There is an example batch job script here: [Example-batch-job](https://github.com/ForModLabUHel/fmi.weather.finland/blob/fmi-from-allas/docs/batch_job_example.txt).
-    2. The most efficient way of running is to use parallel processing. This can be done by setting ```--cpus-per-task=<n-cores>```. It should be set according to the number of years there are to process so that ```n-cores = n-years + 1```. Maximum ```n-cores``` is ```40```. The value will also depend on the required ```--mem-per-cpu```.
+    1. There is an example batch job script here: [Example-batch-job](https://github.com/ForModLabUHel/fmi.weather.finland/blob/main/docs/batch_job_example.txt).
+    2. The most efficient way of running is to use parallel processing. This can be done by setting ```--cpus-per-task=<n-cores>``` in the batch job script. The number of cores should be set according to the number of years there are to process so that ```n-cores = n-years + 1```. Maximum ```n-cores``` is ```40```. The value will also depend on the required ```--mem-per-cpu```.
 
-    
-    
     

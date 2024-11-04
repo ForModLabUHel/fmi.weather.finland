@@ -24,9 +24,7 @@ setup_and_run <- function(repo_url, branch = "main", ...) {
   
   # Input validation
   assert_string(repo_url, null.ok = FALSE)
-  
-  print(paste0("Url: ", repo_url))
-  
+
   # Save the original working directory
   original_wd <- getwd()
   
@@ -35,6 +33,7 @@ setup_and_run <- function(repo_url, branch = "main", ...) {
   
   # Clone the repository
   tryCatch({
+    print(paste0("Cloning ", repo_url, "..."))
     clone_obj <- processx::run("git", c("clone", "-b", branch, repo_url, local_path))
     assert_directory(local_path, access = "r")
     print(paste0("Cloned repo successfully."))
