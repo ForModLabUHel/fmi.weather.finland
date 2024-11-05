@@ -3,6 +3,9 @@
 # to load the init function. Then provide the parameters and run with either a
 # set of requested coordinates or a polygon.
 
+library(data.table)
+library(sp)
+
 
 ### ------------------------------ RUN FIRST ------------------------------- ###
 

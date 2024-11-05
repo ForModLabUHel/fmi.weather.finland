@@ -45,7 +45,7 @@ The Allas module must be loaded. This only needs to be done once for a project.
        [Example-script](https://github.com/ForModLabUHel/fmi.weather.finland/blob/fmi-from-allas/scripts/get_fmi_from_allas.R).
     4. Run the command ```setwd(</your_working_dir>)```.
     5. Click on the ```Session``` tab in the top bar and select ```Terminate R...```.
-    6. After R restarts you should see ```</your_working_dir>``` in the Files Pane and ```getwd()``` should              point to it too.
+    6. After R restarts you should see ```</your_working_dir>``` in the Files Pane and ```getwd()``` should point to it too.
     7. Follow the instructions in the example script.
     
     
