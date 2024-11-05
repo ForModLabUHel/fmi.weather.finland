@@ -315,20 +315,6 @@ process_from_grouped_dt_and_join <- function(dt, FUN, FUN_args, process_var_name
 ##### ------------------- START S3 FUNCTIONS ------------------- #####
 
 
-custom_s3read_using <- function(FUN, ..., object, bucket, opts = NULL, filename = NULL, temp_dir = Sys.getenv("TMPDIR")){
-  
-  assert_directory(temp_dir, access = "rw")
-  
-  temp_file <- tempfile(tmpdir = temp_dir, fileext = paste0(".", tools::file_ext(object)))
-  on.exit(unlink(temp_file, recursive = T))
-  
-  r <- do.call("save_object", c(list(bucket = bucket, object = object, file = temp_file), opts))
-  
-  return(FUN(temp_file, ...))
-}
-
-
-
 #' Get Lookup Data Table with Resolution from S3 Bucket
 #'
 #' This function loads a lookup coordinates .rdata file from an S3 bucket and returns a filtered data table based on the resolution.

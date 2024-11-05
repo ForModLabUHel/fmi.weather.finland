@@ -1,6 +1,6 @@
 # This script is for extracting FMI meteorological data that is stored in Allas.
 # The script must be run on Puhti. First load and run the fetch_file_from_github function
-# to load the init function. Then provide the parameters and run with either a
+# to load the setup_and_run function. Then provide the parameters and run with either a
 # set of requested coordinates or a polygon.
 
 library(data.table)
