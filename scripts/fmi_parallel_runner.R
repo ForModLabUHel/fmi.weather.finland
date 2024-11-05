@@ -29,7 +29,7 @@ local({
     full_path <- file.path(save_path, filename)
     
     print(paste0("Saving file ", full_path, "..."))
-    # save(var_dt, file = full_path)
+    save(var_dt, file = full_path)
     print("Done.")
   })
 })

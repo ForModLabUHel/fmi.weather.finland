@@ -39,7 +39,7 @@ branch <- "fmi-from-allas"
 # Get init functions from github
 init_funs <- fetch_file_from_github(repo, file_path, branch)
 eval(parse(text = init_funs))
-
+rm(init_funs, file_path, repo)
 
 ### ------------------------------------------------------------------------ ###
 
@@ -84,6 +84,7 @@ req_coords <- as.matrix(example_req_coords_dt[, c("E", "N")]) # The coords are p
 # Set parameters
 params <- list(req_coords = req_coords, resolution = resolution, years = years)
 
+# Combine arguments
 setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
 
 # RUN
@@ -117,6 +118,7 @@ spatial_polygons <- SpatialPolygons(list(polygons), proj4string = CRS("EPSG:3067
 # Set parameters
 params <- list(polygon = spatial_polygons, resolution = resolution, years = years)
 
+# Combine arguments
 setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
 
 # RUN
