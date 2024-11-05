@@ -178,7 +178,7 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
   args <- c(list(req_coords = req_coords, dim_x = coords_x, dim_y = coords_y), ...)
   req_nc_coords <- do.call(find_nearest_coords, args)
   
-  return(unique(req_nc_coords))
+  return(req_nc_coords)
 }
 
 
