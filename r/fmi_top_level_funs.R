@@ -219,18 +219,19 @@ fetch_data_from_s3 <- function(bucket_name, lookup_dt_name, region, ...) {
 process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc_coords, resolution, 
                          fmi_allas_bucket_name, lookup_dt_name, opts, region, round_dec, join_by_vec) {
   
-  checkmate::assert_data_table(nc_files_grouped_dt, any.missing = FALSE)
-  checkmate::assert_numeric(years, any.missing = FALSE, min.len = 1)
+  assert_data_table(nc_files_grouped_dt, any.missing = F)
+  assert_numeric(years, any.missing = FALSE, min.len = 1)
   
   are_years_present <- all(years %in% nc_files_grouped_dt$year)
-  checkmate::assert_true(are_years_present)
+  assert_true(are_years_present)
   
-  print("Running process_data...")
+  print(paste0("Running process_data..."))
   cat("\n")
   
-  print("Year(s): ")
-  print(years)
+  print(paste0("Year(s): "))
+  print(paste0(years))
   cat("\n")
+  
   
   char_res <- paste0(resolution, "km-by-", resolution, "km")
   print(paste0("Resolution is ", char_res, "."))
@@ -240,17 +241,21 @@ process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc
                                                                bucket = fmi_allas_bucket_name, object = lookup_dt_name, 
                                                                opts = list(region = region))
   
-  if (is.null(req_coords)) {
+  if(is.null(req_coords)) {
     req_coords <- extract_polygon_coords_with_res(polygon = polygon, reference_dt = filtered_fmi_lookup_dt, 
                                                   resolution = resolution)
   }
   
-  if (is.null(req_nc_coords)) {
+  
+  if(is.null(req_nc_coords)) {
     req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, 
                                        is_longlat = FALSE)
   }
   
-  s3read_args <- list(FUN = nc_open, bucket = fmi_allas_bucket_name, opts = c(opts, list(region = region)))
+  req_coords_lookup_dt <- create_clim_id_lookup_dt(req_coords, req_nc_coords)
+  req_nc_coords <- unique(req_nc_coords)
+  
+  s3read_args <- list(FUN = nc_open, bucket = fmi_allas_bucket_name, opts = c(opts, list(region=region)))
   extract_nc_vars_by_polygon_coords_args <- list(polygon = polygon, req_coords = req_coords, 
                                                  time_var = "Time", x_var = "Lon", y_var = "Lat", 
                                                  is_longlat = FALSE, req_nc_coords = req_nc_coords)
@@ -259,7 +264,9 @@ process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc
   dt_years <- nc_files_grouped_dt[year %in% years]
   split_dts <- split(dt_years, by = "id")
   
-  return(list(split_dts = split_dts, FUN_args = FUN_args))
+  
+  return(list(split_dts = split_dts, FUN_args = FUN_args, req_coords_lookup_dt = req_coords_lookup_dt))
+  
 }
 
 

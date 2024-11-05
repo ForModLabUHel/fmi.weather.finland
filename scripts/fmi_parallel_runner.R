@@ -1,4 +1,3 @@
-# Script that loads an environment from a tempfile and executes a parallel script.
 
 
 local({
@@ -22,17 +21,41 @@ local({
     print(var_dt)
     cat("\n")
     
-    save_path <- data$save_path 
+    print(paste0("Unique coords:"))
+    print(nrow(unique(var_dt[, .(x, y)])))
+    cat("\n")
     
-    # Save with unique filename
-    filename <- generate_unique_filename("fmi_vars", "rdata")
-    full_path <- file.path(save_path, filename)
+    save_path <- data$save_path
+    req_coords_lookup_dt <- data$return_list$req_coords_lookup_dt
     
-    print(paste0("Saving file ", full_path, "..."))
-    save(var_dt, file = full_path)
-    print("Done.")
+    print(req_coords_lookup_dt)
+    
+    timestamp <- generate_unique_filename("", "rdata")
+    fmi_vars_filename <- paste0("fmi_vars", timestamp)
+    lookup_filename <- paste0("climID_lookup", timestamp)
+    
+    save_fmi_files_with_print(save_path = save_path, 
+                              objects = list(var_dt, req_coords_lookup_dt),
+                              filenames = list(fmi_vars_filename, lookup_filename))
+    
+    
   })
 })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -193,6 +193,52 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
 ##### ------------------- START PROCESS DATA FUNCTIONS ------------------- #####
 
 
+
+#' Create Climate ID Lookup Data Table
+#'
+#' This function takes two matrices, converts them to data.tables, creates an ID column for the first table indicating the row number,
+#' then cbinds the two tables and assigns a second ID column called climID that indicates the unique coordinates in the second data.table.
+#'
+#' @param matrix1 A numeric matrix.
+#' @param matrix2 A numeric matrix. Must have the same number of rows as \code{matrix1}.
+#' @return A data.table with an ID column from the first matrix and a climID column indicating unique coordinates in the second matrix.
+#' @examples
+#' \dontrun{
+#' matrix1 <- matrix(c(300000, 6800000, 301000, 6801000, 302000, 6802000), ncol = 2)
+#' matrix2 <- matrix(c(300000, 6800000, 301000, 6801000, 302000, 6802000), ncol = 2)
+#' result <- create_clim_id_lookup_dt(matrix1, matrix2)
+#' print(result)
+#' }
+#' @importFrom data.table as.data.table setnames
+#' @importFrom checkmate assert_matrix assert_true
+#' @export
+create_clim_id_lookup_dt <- function(matrix1, matrix2) {
+  
+  
+  # Input validation
+  assert_matrix(matrix1, min.rows = 1)
+  assert_matrix(matrix2, min.rows = 1)
+  assert_true(nrow(matrix1) == nrow(matrix2))
+  
+  
+  # Convert matrices to data.tables
+  dt1 <- as.data.table(matrix1)
+  dt2 <- as.data.table(matrix2)
+  
+  # Create id columns
+  dt1[, id := .I]
+  dt2[, id := .I]
+  
+  # Assign climID to indicate unique coordinates in dt2
+  dt2[, climID := .GRP, by = .(V1, V2)]  # Assuming second data.table has two columns (V1 and V2)
+  
+  # Merge climID into dt1 using id
+  result_dt <- merge(dt1, dt2[, .(id, climID)], by = "id", all.x = TRUE)
+  
+  return(result_dt)
+}
+
+
 #' Extract Coordinates within a Polygon with Resolution
 #'
 #' This function extracts coordinates from a reference data table that fall within a given polygon.
@@ -400,6 +446,17 @@ get_nc_vars_from_bucket <- function(object, ...) {
 
 ##### ------------------- START UTILITY FUNCTIONS ------------------- #####
 
+
+save_fmi_files_with_print <- function(save_path, objects, filenames) {
+  invisible(lapply(seq_along(objects), function(i) {
+    full_path <- file.path(save_path, filenames[i])
+    object <- objects[i]
+    
+    print(paste0("Saving ", full_path, "..."))
+    # save(object, file = full_path)
+    print("Done.")
+  }))
+}
 
 
 #' Calculate Vapor Pressure Deficit (VPD) from Relative Humidity, Minimum and Maximum Temperature 

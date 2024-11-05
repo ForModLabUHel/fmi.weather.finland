@@ -24,4 +24,4 @@ fi
 cd <your_working_dir>
 
 # Run the R script
-srun singularity_wrapper exec Rscript --no-save <path/to/script.R>
+srun singularity_wrapper exec Rscript --no-save <script.R>
