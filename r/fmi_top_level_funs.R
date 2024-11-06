@@ -217,7 +217,8 @@ process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc
                                          x_var = "Lon", 
                                          y_var = "Lat", 
                                          is_longlat = FALSE, 
-                                         req_nc_coords = req_nc_coords)
+                                         req_nc_coords = req_nc_coords,
+                                         round_dec = round_dec)
   
   # Split data and prepare function arguments
   FUN_args = list(s3read_args = s3read_args, extract_nc_vars_by_coords_args = extract_nc_vars_by_coords_args)
