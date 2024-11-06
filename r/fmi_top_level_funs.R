@@ -167,187 +167,122 @@ fetch_data_from_s3 <- function(bucket_name, lookup_dt_name, region, ...) {
 
 
 
-#' Process Data
+#' Process Data from NetCDF Files
 #'
-#' This function processes grouped `.nc` files by filtering them for specific years, 
-#' extracting requested coordinates, and preparing the necessary arguments for further processing.
+#' This function processes data from grouped NetCDF files, prepares arguments for further processing, and handles coordinate precedence.
 #'
-#' @param nc_files_grouped_dt A `data.table` containing grouped filenames from the S3 bucket.
-#' @param years A numeric vector specifying the years to filter the data.
-#' @param polygon A `SpatialPolygons` object representing the polygon for which data is requested.
-#' @param req_coords A matrix of requested coordinates (optional).
-#' @param req_nc_coords A matrix of requested netCDF coordinates (optional).
-#' @param resolution A numeric value representing the resolution (in km) for the output.
+#' @param nc_files_grouped_dt A data.table of grouped NetCDF files.
+#' @param years A numeric vector of years to process.
+#' @param polygon A SpatialPolygons object representing the area of interest. Default is `NULL`.
+#' @param req_coords A matrix of requested coordinates. Default is `NULL`.
+#' @param req_nc_coords A matrix of requested NetCDF coordinates. Default is `NULL`.
+#' @param resolution A numeric value indicating the resolution.
 #' @param fmi_allas_bucket_name A character string specifying the name of the S3 bucket.
-#' @param lookup_dt_name A character string specifying the name of the lookup data table in the S3 bucket.
-#' @param opts A list of additional options for S3 operations.
-#' @param region A character string specifying the AWS region where the S3 bucket is located.
-#' @param round_dec An integer indicating the number of decimal places to round coordinates.
+#' @param lookup_dt_name A character string specifying the name of the lookup data table.
+#' @param opts A list of options for the function. Default is `NULL`.
+#' @param region A character string specifying the AWS region.
+#' @param round_dec A numeric value indicating the number of decimal places to round to.
 #' @param join_by_vec A character vector specifying the columns to join by.
-#' @return A list containing `split_dts`, a list of data.tables split by ID, and `FUN_args`, a list of arguments for further processing.
-#' @details 
-#' This function performs the following steps:
-#' \itemize{
-#'   \item Validates the input data table and numeric vector for years.
-#'   \item Ensures the specified years are present in the data table.
-#'   \item Reads the lookup data table from the S3 bucket.
-#'   \item Extracts requested coordinates and netCDF coordinates if not provided.
-#'   \item Prepares arguments for further processing.
-#' }
-#' @examples
-#' \dontrun{
-#' library(data.table)
-#' library(sp)
-#' library(sf)
-#' library(checkmate)
-#' 
-#' # Example data
-#' nc_files_grouped_dt <- data.table(id = 1:3, year = c(2021, 2022, 2023))
-#' years <- c(2021, 2022)
-#' coords <- cbind(lon = c(300000, 305000, 305000, 300000, 300000), lat = c(6800000, 6800000, 6805000, 6805000, 6800000))
-#' polygon <- SpatialPolygons(list(Polygons(list(Polygon(coords)), "1")))
-#' 
-#' # Call the function
-#' result <- process_data(nc_files_grouped_dt, years, polygon, req_coords = NULL, req_nc_coords = NULL, 
-#'                        resolution = 5, fmi_allas_bucket_name = "my-bucket", lookup_dt_name = "lookup_data", 
-#'                        opts = list(), region = "us-east-1", round_dec = 2, join_by_vec = c("id", "year"))
-#' print(result)
-#' }
-#' @importFrom data.table as.data.table
-#' @importFrom checkmate assert_data_table assert_numeric assert_true
+#' @return A list containing the split data tables, function arguments, and the lookup data table.
+#' @importFrom data.table assert_data_table
+#' @importFrom ncdf4 nc_open nc_close
 #' @export
 process_data <- function(nc_files_grouped_dt, years, polygon, req_coords, req_nc_coords, resolution, 
                          fmi_allas_bucket_name, lookup_dt_name, opts, region, round_dec, join_by_vec) {
-  
-  assert_data_table(nc_files_grouped_dt, any.missing = F)
+  # Input validations
+  assert_data_table(nc_files_grouped_dt, any.missing = FALSE)
   assert_numeric(years, any.missing = FALSE, min.len = 1)
-  
   are_years_present <- all(years %in% nc_files_grouped_dt$year)
   assert_true(are_years_present)
   
-  print(paste0("Running process_data..."))
-  cat("\n")
+  # Print messages 
+  print_process_data_messages(years, resolution)
   
-  print(paste0("Year(s): "))
-  print(paste0(years))
-  cat("\n")
-  
-  
-  char_res <- paste0(resolution, "km-by-", resolution, "km")
-  print(paste0("Resolution is ", char_res, "."))
-  cat("\n")
-  
+  # Load filtered lookup data table
   filtered_fmi_lookup_dt <- get_lookup_dt_with_res_from_bucket(resolution = resolution, FUN = load_rdata_file, 
                                                                bucket = fmi_allas_bucket_name, object = lookup_dt_name, 
                                                                opts = list(region = region))
   
-  if(is.null(req_coords)) {
-    req_coords <- extract_polygon_coords_with_res(polygon = polygon, reference_dt = filtered_fmi_lookup_dt, 
-                                                  resolution = resolution)
-  }
+  # Handle coordinates precedence 
+  coords <- handle_process_data_input_coords(polygon, req_coords, req_nc_coords, 
+                                             filtered_fmi_lookup_dt, resolution, round_dec) 
+  req_coords <- coords$req_coords 
+  req_nc_coords <- coords$req_nc_coords 
+  req_coords_lookup_dt <- coords$req_coords_lookup_dt
   
+  # Prepare arguments for further processing
+  s3read_args <- list(FUN = nc_open, bucket = fmi_allas_bucket_name, opts = c(opts, list(region = region)))
+  extract_nc_vars_by_coords_args <- list(req_coords = req_coords, 
+                                         time_var = "Time", 
+                                         x_var = "Lon", 
+                                         y_var = "Lat", 
+                                         is_longlat = FALSE, 
+                                         req_nc_coords = req_nc_coords)
   
-  if(is.null(req_nc_coords)) {
-    req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, 
-                                       is_longlat = FALSE)
-  }
-  
-  req_coords_lookup_dt <- create_clim_id_lookup_dt(req_coords, req_nc_coords)
-  req_nc_coords <- unique(req_nc_coords)
-  
-  s3read_args <- list(FUN = nc_open, bucket = fmi_allas_bucket_name, opts = c(opts, list(region=region)))
-  extract_nc_vars_by_polygon_coords_args <- list(polygon = polygon, req_coords = req_coords, 
-                                                 time_var = "Time", x_var = "Lon", y_var = "Lat", 
-                                                 is_longlat = FALSE, req_nc_coords = req_nc_coords)
-  
-  FUN_args = list(s3read_args = s3read_args, extract_nc_vars_by_polygon_coords_args = extract_nc_vars_by_polygon_coords_args)
+  # Split data and prepare function arguments
+  FUN_args = list(s3read_args = s3read_args, extract_nc_vars_by_coords_args = extract_nc_vars_by_coords_args)
   dt_years <- nc_files_grouped_dt[year %in% years]
   split_dts <- split(dt_years, by = "id")
   
-  
   return(list(split_dts = split_dts, FUN_args = FUN_args, req_coords_lookup_dt = req_coords_lookup_dt))
-  
 }
 
 
 
-#' Get FMI Data from Allas
+#' Get FMI Data from ALLAS
 #'
-#' This function fetches data from the Allas service for the Finnish Meteorological Institute (FMI) using a polygon or requested coordinates.
+#' This function retrieves FMI data from ALLAS based on provided coordinates or polygon, and processes the data.
 #'
-#' @param polygon A `SpatialPolygons` object defining the area of interest. Default is `NULL`.
+#' @param polygon A SpatialPolygons object representing the area of interest. Default is `NULL`.
 #' @param req_coords A matrix of requested coordinates. Default is `NULL`.
 #' @param req_nc_coords A matrix of requested NetCDF coordinates. Default is `NULL`.
-#' @param round_dec A numeric value specifying the decimal places to round coordinates. Default is `3`.
-#' @param years A numeric vector specifying the years of interest. Default is `c(1961)`.
-#' @param resolution A numeric value specifying the resolution in km. Default is `1`.
-#' @param fmi_allas_bucket_name A character string specifying the name of the Allas bucket. Default is `"2000994-fmi"`.
-#' @param lookup_dt_name A character string specifying the name of the lookup data table file. Default is `"fmi_resolutions_1_5_9_lookup_dt.rdata"`.
-#' @param join_by_vec A character vector specifying the columns to join by. Default is `c("id", "time", "x", "y")`.
-#' @param opts A list of additional options for the function. Default is `NULL`.
-#' @return A list containing the split data tables and function arguments for further processing.
-#' @details 
-#' This function performs the following steps:
-#' \itemize{
-#'   \item Validates that either `polygon` or `req_coords` is provided.
-#'   \item Sets the AWS region for the session.
-#'   \item Fetches grouped NetCDF files from the Allas bucket.
-#'   \item Processes the data based on the provided parameters and configurations.
-#' }
-#' @examples
-#' \dontrun{
-#' library(data.table)
-#' library(sp)
-#' library(sf)
-#' library(yaml)
-#' library(checkmate)
-#' 
-#' # Define example parameters
-#' polygon <- NULL
-#' req_coords <- NULL
-#' req_nc_coords <- NULL
-#' round_dec <- 3
-#' years <- c(1961, 1962)
-#' resolution <- 1
-#' fmi_allas_bucket_name <- "2000994-fmi"
-#' lookup_dt_name <- "fmi_resolutions_1_5_9_lookup_dt.rdata"
-#' join_by_vec <- c("id", "time", "x", "y")
-#' opts <- list(region = "eu-west-1")
-#' 
-#' # Call the function
-#' result <- get_fmi_data_from_allas(polygon, req_coords, req_nc_coords, round_dec, years, resolution, 
-#'                                   fmi_allas_bucket_name, lookup_dt_name, join_by_vec, opts)
-#' print(result)
-#' }
-#' @importFrom data.table as.data.table
-#' @importFrom sp coordinates proj4string
-#' @importFrom sf st_as_sf
-#' @importFrom yaml read_yaml
-#' @importFrom checkmate assert_class assert_file_exists
+#' @param round_dec A numeric value indicating the number of decimal places to round to. Default is 3.
+#' @param years A numeric vector of years to process. Default is `c(1961)`.
+#' @param resolution A numeric value indicating the resolution. Default is 1.
+#' @param opts A list of options for the function. Default is `NULL`.
+#' @param config A configuration object. Default is `NULL`.
+#' @return A list containing the processed data.
+#' @importFrom checkmate assert_list assert_names
 #' @export
 get_fmi_data_from_allas <- function(polygon = NULL, 
                                     req_coords = NULL, 
                                     req_nc_coords = NULL, 
                                     round_dec = 3, 
                                     years = c(1961), 
-                                    resolution = 1, 
-                                    fmi_allas_bucket_name = "2000994-fmi", 
-                                    lookup_dt_name = "fmi_resolutions_1_5_9_lookup_dt.rdata",
-                                    join_by_vec = c("id", "time", "x", "y"),
-                                    opts = NULL) {
+                                    resolution = 1,
+                                    opts = NULL,
+                                    config = NULL) {
+  if (is.null(req_coords) && is.null(req_nc_coords) && is.null(polygon)) {
+    stop("Either req_coords or req_nc_coords must be provided, or polygon must be provided.")
+  }
   
-  if (is.null(polygon) && is.null(req_coords)) stop("Either polygon or req_coords must be provided.")
+  if (is.null(config)) {
+    stop("No config file provided!")
+  }
   
-  with_envvar(opts, {
-    # Set region for session
-    region <- Sys.getenv("AWS REGION")
-    
-    get_grouped_dt_from_filenames_args = list(column_names = c("var", "year"), group_vars = c("year"))
-    
-    nc_files_grouped_dt <- fetch_data_from_s3(fmi_allas_bucket_name, lookup_dt_name, region, get_grouped_dt_from_filenames_args)
-    return_list <- process_data(nc_files_grouped_dt, years, polygon, req_coords, req_nc_coords, resolution, 
-                                fmi_allas_bucket_name, lookup_dt_name, opts, region, round_dec, join_by_vec)
-  })
+  # Validate configuration object
+  assert_list(config, null.ok = FALSE)
+  assert_names(names(config), must.include = c("fmi_allas_bucket_name", "lookup_dt_name", "join_by_vec"))
+  
+  # Extract necessary values from config
+  fmi_allas_bucket_name <- config$fmi_allas_bucket_name
+  lookup_dt_name <- config$lookup_dt_name
+  join_by_vec <- config$join_by_vec
+  
+  # Handle precedence using the helper function
+  coords <- handle_coords_input_precedence(polygon, req_coords, req_nc_coords)
+  polygon <- coords$polygon
+  req_coords <- coords$req_coords
+  req_nc_coords <- coords$req_nc_coords
+  
+  # Get region
+  region <- Sys.getenv("AWS_REGION")
+  
+  get_grouped_dt_from_filenames_args = list(column_names = c("var", "year"), group_vars = c("year"))
+  
+  nc_files_grouped_dt <- fetch_data_from_s3(fmi_allas_bucket_name, lookup_dt_name, region, get_grouped_dt_from_filenames_args)
+  return_list <- process_data(nc_files_grouped_dt, years, polygon, req_coords, req_nc_coords, resolution, 
+                              fmi_allas_bucket_name, lookup_dt_name, opts, region, round_dec, join_by_vec)
   
   return(return_list)
 }
@@ -356,45 +291,14 @@ get_fmi_data_from_allas <- function(polygon = NULL,
 
 #' Get NetCDF Variables in Parallel
 #'
-#' This function processes NetCDF files in parallel using the provided data and function arguments.
+#' This function processes NetCDF variables in parallel using multiple cores.
 #'
-#' @param return_list A list containing the split data tables and function arguments for processing.
-#' @param opts A list of additional options for the function. Default is `NULL`.
-#' @return A list of data.tables containing the processed NetCDF variables.
-#' @details 
-#' This function performs the following steps:
-#' \itemize{
-#'   \item Determines the number of available cores for parallel processing.
-#'   \item Processes the split data tables in parallel using the provided function and arguments.
-#' }
-#' @examples
-#' \dontrun{
-#' library(data.table)
-#' library(parallel)
-#' 
-#' # Define example return_list
-#' return_list <- list(
-#'   split_dts = list(
-#'     data.table(id = 1, filename = "file1.nc"),
-#'     data.table(id = 2, filename = "file2.nc")
-#'   ),
-#'   FUN_args = list(
-#'     s3read_args = list(FUN = nc_open, bucket = "2000994-fmi", opts = list(region = "eu-west-1")),
-#'     extract_nc_vars_by_polygon_coords_args = list(
-#'       polygon = NULL, req_coords = NULL, time_var = "Time", x_var = "Lon", y_var = "Lat",
-#'       is_longlat = FALSE, req_nc_coords = NULL
-#'     )
-#'   )
-#' )
-#' 
-#' # Call the function
-#' result <- get_nc_vars_parallel(return_list)
-#' print(result)
-#' }
-#' @importFrom data.table as.data.table
+#' @param return_list A list containing the split data tables and function arguments.
+#' @param opts A list of options for the function. Default is `NULL`.
+#' @return A data.table containing the processed NetCDF variables.
 #' @importFrom parallel availableCores
 #' @export
-get_nc_vars_parallel <- function(return_list, opts = NULL){
+get_nc_vars_parallel <- function(return_list, opts = NULL) {
   split_dts <- return_list$split_dts
   FUN_args <- return_list$FUN_args
   join_by_vec = c("id", "time", "x", "y") 
@@ -407,19 +311,20 @@ get_nc_vars_parallel <- function(return_list, opts = NULL){
   print(paste0("Processing nc files: "))
   cat("\n")
   
-  with_envvar(opts, {
-    var_dts <- get_in_parallel(data = split_dts,
-                               fun = process_from_grouped_dt_and_join,
-                               cores = n_cores,
-                               fun_kwargs = list(FUN = get_nc_vars_from_bucket,
-                                                 FUN_args = FUN_args,
-                                                 process_var_name = "filename",
-                                                 join_by_vec = join_by_vec),
-                               type = "FORK")
-  })
+  var_dts <- get_in_parallel(data = split_dts,
+                             fun = process_from_grouped_dt_and_join,
+                             cores = n_cores,
+                             fun_kwargs = list(FUN = get_nc_vars_from_bucket,
+                                               FUN_args = FUN_args,
+                                               process_var_name = "filename",
+                                               join_by_vec = join_by_vec),
+                             type = "FORK")
   
   return(var_dts)
 }
+
+
+
 
 
 
@@ -428,50 +333,28 @@ get_nc_vars_parallel <- function(return_list, opts = NULL){
 #' This function sets up an environment, validates inputs, and runs a script in a new process using `processx`.
 #'
 #' @param env An environment where configurations and data will be loaded.
-#' @param save_path A character string specifying the directory to save the result table. Default is the current working directory.
+#' @param save_path A character string specifying the directory to save temporary files. Default is the current working directory.
 #' @param opts A list of additional options for the function. Default is `NULL`.
 #' @param ... Additional parameters to pass to the `get_fmi_data_from_allas` function.
 #' @return This function does not return a value but sets up the environment and runs a script in a new process.
-#' @details 
-#' This function performs the following steps:
-#' \itemize{
-#'   \item Validates the input environment and the provided directory for saving files.
-#'   \item Calls the `get_fmi_data_from_allas` function with the provided parameters and options.
-#'   \item Adds objects to the environment for further processing.
-#'   \item Saves the return list to a temporary file and ensures cleanup on exit.
-#'   \item Runs a script in a new process using `processx` with the environment setup.
-#' }
-#' @examples
-#' \dontrun{
-#' library(data.table)
-#' library(checkmate)
-#' 
-#' # Create a new environment
-#' env <- new.env()
-#' env$runner_path <- "path/to/runner_script.R"
-#' 
-#' # Call the main function
-#' main_function(env, save_path = "path/to/save", opts = list(region = "eu-west-1"))
-#' }
-#' @importFrom data.table as.data.table
-#' @importFrom checkmate assert_environment assert_directory assert_file_exists
+#' @importFrom checkmate assert_environment assert_directory assert_file_exists assert_list
 #' @importFrom processx run
 #' @export
 main_function <- function(env,
                           save_path = getwd(),
                           opts = NULL,
                           ...) {
-  
   # Input validations
-  checkmate::assert_environment(env)
-  checkmate::assert_directory(save_path, access = "rw")
-  checkmate::assert_file_exists(env$runner_path)
+  assert_environment(env)
+  assert_directory(save_path, access = "rw")
+  assert_file_exists(env$runner_path)
+  assert_list(opts, null.ok = TRUE)
   
   # Get params for function
   args <- list(...)
   
   # Call the get_fmi_data_from_allas with the provided params
-  return_list <- do.call(get_fmi_data_from_allas, c(args, list(opts = opts)))
+  return_list <- do.call(get_fmi_data_from_allas, c(args, list(opts = opts, config = env$config)))
   
   # Add objects to env
   data <- list(return_list = return_list, opts = opts, save_path = save_path)
@@ -481,7 +364,7 @@ main_function <- function(env,
   temp_file <- tempfile(fileext = ".rds")
   saveRDS(list(env = env), file = temp_file)
   on.exit(unlink(temp_file), add = TRUE)
-  checkmate::assert_file_exists(temp_file)
+  assert_file_exists(temp_file)
   
   # Call the script that runs the parallel function using processx
   tryCatch({
@@ -491,6 +374,7 @@ main_function <- function(env,
     stop(paste0("Error running ", env$runner_path))
   })
 }
+
 
 
 

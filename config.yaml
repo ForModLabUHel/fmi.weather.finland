@@ -7,6 +7,13 @@ fmi_sources:
 runner_path: scripts/fmi_parallel_runner.R
 test_helper_funs:
   - tests/helper_functions.R
+fmi_allas_bucket_name: 2000994-fmi
+lookup_dt_name: fmi_resolutions_1_5_9_lookup_dt.rdata
+join_by_vec:
+  - id 
+  - time 
+  - x 
+  - y
 required_libs:
   - aws.s3
   - checkmate
@@ -28,5 +35,6 @@ required_libs:
   - withr
 time_zone: Europe/Helsinki
 locale: C.UTF-8
+
 
 

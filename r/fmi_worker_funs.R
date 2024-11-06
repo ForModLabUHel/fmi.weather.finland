@@ -92,6 +92,80 @@ extract_nc_vars_by_polygon_coords <- function(nc_input, polygon = NULL,
 }
 
 
+#' Extract NetCDF Variables by Coordinates
+#'
+#' This function extracts variables from a NetCDF file using the provided coordinates. It can handle both general coordinates (`req_coords`) and NetCDF-specific coordinates (`req_nc_coords`).
+#'
+#' @param nc_input A character string specifying the path to the NetCDF file or an existing `ncdf4` object.
+#' @param req_coords A numeric matrix of requested coordinates. Default is `NULL`.
+#' @param req_nc_coords A numeric matrix of requested NetCDF coordinates. Default is `NULL`.
+#' @param lon_name A character string specifying the longitude variable name in the NetCDF file. Default is `"Lon"`.
+#' @param lat_name A character string specifying the latitude variable name in the NetCDF file. Default is `"Lat"`.
+#' @param ... Additional arguments passed to the `get_netcdf_by_nearest_coords` function.
+#' @return A data.table containing the extracted variables from the NetCDF file.
+#' @details 
+#' This function performs the following steps:
+#' \itemize{
+#'   \item Opens the specified NetCDF file or uses an existing `ncdf4` object.
+#'   \item Validates that either `req_coords` or `req_nc_coords` is provided.
+#'   \item Uses `req_nc_coords` if provided; otherwise, it uses `req_coords`.
+#'   \item Prepares the arguments for the `get_netcdf_by_nearest_coords` function.
+#'   \item Extracts and returns the variables from the NetCDF file.
+#' }
+#' @examples
+#' \dontrun{
+#' library(ncdf4)
+#' nc_path <- "path/to/netcdf_file.nc"
+#' req_coords <- matrix(c(300000, 6800000, 301000, 6801000, 302000, 6802000), ncol = 2)
+#' req_nc_coords <- matrix(c(300000, 6800000, 300000, 6800000, 300000, 6800000), ncol = 2)
+#' nc_vars_dt <- extract_nc_vars_by_coords(nc_input = nc_path, req_coords = req_coords, lon_name = "lon", lat_name = "lat")
+#' }
+#' @importFrom ncdf4 nc_open nc_close
+#' @export
+extract_nc_vars_by_coords <- function(nc_input, req_coords = NULL, req_nc_coords = NULL, lon_name = "Lon", lat_name = "Lat", ...) {
+  
+  # Open NetCDF file or use existing ncdf4 object
+  nc_info <- open_nc_file(nc_input)
+  nc_ds <- nc_info$nc_ds
+  should_close <- nc_info$should_close
+  
+  # Ensure the NetCDF file is closed if it was opened by this function
+  if (should_close) {
+    on.exit(nc_close(nc_ds))
+  }
+  
+  # Validate inputs
+  if (is.null(req_coords) && is.null(req_nc_coords)) {
+    stop("Either 'req_coords' or 'req_nc_coords' must be provided.")
+  }
+  
+  assert_matrix(req_coords, null.ok = TRUE) # Ensure req_coords is a matrix if provided
+  assert_matrix(req_nc_coords, null.ok = TRUE) # Ensure req_nc_coords is a matrix if provided
+  assert_list(list(...), null.ok = TRUE) # Ensure additional arguments are a list (if provided)
+  
+  filename <- if (is.character(nc_input)) nc_input else "netCDF object"
+  
+  print(paste0("Processing ", filename, "..."))
+  
+  # Determine which coordinates to use
+  if (!is.null(req_nc_coords)) {
+    req_coords <- req_nc_coords
+  }
+  
+  # Prepare arguments for the get_netcdf_by_nearest_coords function
+  get_netcdf_by_nearest_coords_args <- list(..., nc_input = nc_input, req_coords = req_coords, req_nc_coords = req_nc_coords)
+  
+  print(paste0("Getting variables..."))
+  
+  # Extract variables from the nc file
+  nc_vars_dt <- do.call(get_netcdf_by_nearest_coords, get_netcdf_by_nearest_coords_args)
+  
+  print(paste0("Done."))
+  
+  # Return the extracted variables
+  return(nc_vars_dt)
+}
+
 
 
 #' Extract Coordinates from netCDF File
@@ -194,6 +268,8 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
 
 
 
+
+
 #' Create Climate ID Lookup Data Table
 #'
 #' This function takes two matrices, converts them to data.tables, creates an ID column for the first table indicating the row number,
@@ -237,6 +313,15 @@ create_clim_id_lookup_dt <- function(matrix1, matrix2) {
   
   return(result_dt)
 }
+
+
+
+
+
+
+
+
+
 
 
 #' Extract Coordinates within a Polygon with Resolution
@@ -361,6 +446,8 @@ process_from_grouped_dt_and_join <- function(dt, FUN, FUN_args, process_var_name
 ##### ------------------- START S3 FUNCTIONS ------------------- #####
 
 
+
+
 #' Get Lookup Data Table with Resolution from S3 Bucket
 #'
 #' This function loads a lookup coordinates .rdata file from an S3 bucket and returns a filtered data table based on the resolution.
@@ -418,18 +505,18 @@ get_nc_vars_from_bucket <- function(object, ...) {
   args <- list(...)
   
   assert_list(args$s3read_args, null.ok = TRUE)
-  assert_list(args$extract_nc_vars_by_polygon_coords_args, null.ok = TRUE)
+  assert_list(args$extract_nc_vars_by_coords_args, null.ok = TRUE)
   
   # Extract args
   s3read_args <- args$s3read_args
-  extract_nc_vars_by_polygon_coords_args <- args$extract_nc_vars_by_polygon_coords_args
+  extract_nc_vars_by_coords_args <- args$extract_nc_vars_by_coords_args
   
   # Open nc from bucket
   nc <- do.call(s3read_using, c(list(object = object), s3read_args))
   on.exit(nc_close(nc))
   
   # Get vars
-  do.call(extract_nc_vars_by_polygon_coords, c(list(nc_input = nc), extract_nc_vars_by_polygon_coords_args))
+  do.call(extract_nc_vars_by_coords, c(list(nc_input = nc), extract_nc_vars_by_coords_args))
 }
 
 
@@ -447,6 +534,47 @@ get_nc_vars_from_bucket <- function(object, ...) {
 ##### ------------------- START UTILITY FUNCTIONS ------------------- #####
 
 
+# Helper Function to Handle Coordinates Precedence
+handle_process_data_input_coords <- function(polygon, req_coords, req_nc_coords, filtered_fmi_lookup_dt, resolution, round_dec) {
+  if (!is.null(req_nc_coords)) {
+    req_coords <- req_nc_coords
+    colnames(req_nc_coords) <- NULL
+  } else if (!is.null(req_coords)) {
+    req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, is_longlat = FALSE)
+  } else if (!is.null(polygon)) {
+    req_coords <- extract_polygon_coords_with_res(polygon = polygon, reference_dt = filtered_fmi_lookup_dt, resolution = resolution)
+    req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, is_longlat = FALSE)
+  }
+  req_coords_lookup_dt <- create_clim_id_lookup_dt(req_coords, req_nc_coords)
+  list(req_coords = req_coords, req_nc_coords = unique(req_nc_coords), req_coords_lookup_dt = req_coords_lookup_dt)
+}
+
+# Helper Function to Print Messages
+print_process_data_messages <- function(years, resolution) {
+  print(paste0("Running process_data..."))
+  cat("\n")
+  print(paste0("Year(s): "))
+  print(paste0(years))
+  cat("\n")
+  char_res <- paste0(resolution, "km-by-", resolution, "km")
+  print(paste0("Resolution is ", char_res, "."))
+  cat("\n")
+}
+
+
+
+# Helper function to handle coordinates precedence
+handle_coords_input_precedence <- function(polygon, req_coords, req_nc_coords) {
+  if (!is.null(req_nc_coords)) {
+    return(list(polygon = NULL, req_coords = NULL, req_nc_coords = req_nc_coords))
+  } else if (!is.null(req_coords)) {
+    return(list(polygon = NULL, req_coords = req_coords, req_nc_coords = NULL))
+  } else {
+    return(list(polygon = polygon, req_coords = req_coords, req_nc_coords = req_nc_coords))
+  }
+}
+
+# Helper function to save files with print
 save_fmi_files_with_print <- function(save_path, objects, filenames) {
   invisible(lapply(seq_along(objects), function(i) {
     full_path <- file.path(save_path, filenames[i])
