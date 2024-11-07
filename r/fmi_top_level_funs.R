@@ -1,4 +1,5 @@
 
+
 #' Run a function using parallel processing (parallel library)
 #'
 #' @param data list List of objects to process
@@ -14,7 +15,6 @@
 #'
 #' @examples
 get_in_parallel <- function(data, fun, cores=8, libs = list(), sources = list(), fun_kwargs = list(), type = "PSOCK"){
-  
   tryCatch(
     {
       print(paste0("Parallel processing..."))
@@ -35,18 +35,15 @@ get_in_parallel <- function(data, fun, cores=8, libs = list(), sources = list(),
       )
     },
     error = function(e) {
-      print(e)
+      stop(e)
     },
     finally = {
-      print(t)
-      
-      print("Done.")
       
       # Stop cluster
       on.exit(parallel::stopCluster(cl))
       
       return(result)
-
+      
     }
   )
 }
@@ -371,7 +368,6 @@ main_function <- function(env,
   tryCatch({
     runner_obj <- processx::run("Rscript", c(env$runner_path, temp_file), echo = TRUE)
   }, error = function(runner_obj) {
-    message(runner_obj$stderr)
     stop(paste0("Error running ", env$runner_path))
   })
 }

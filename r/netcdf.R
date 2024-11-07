@@ -219,32 +219,40 @@ find_nearest_coords <- function(req_coords, dim_x, dim_y, round_dec, is_longlat 
 #' }
 #' @export
 get_variable_data <- function(nc, req_var, coord_idxs, dim_time, id_vec, req_nc_coords, is_longlat = TRUE) {
-
+  
+  
   # Input validation
+  coll <- makeAssertCollection() # Collection for error messages
   assert_class(nc, "ncdf4")
   assert_character(req_var, min.len = 1)
   assert_data_frame(coord_idxs, min.rows = 1, any.missing = F, all.missing = F, ncols = 2)
-  assert_numeric(coord_idxs$x_idxs, any.missing = F, all.missing = F)
-  assert_numeric(coord_idxs$y_idxs, any.missing = F, all.missing = F)
+  x_idxs_assertion <- assert_numeric(coord_idxs$x_idxs, any.missing = F, all.missing = F, add = coll)
+  y_idxs_assertion <- assert_numeric(coord_idxs$y_idxs, any.missing = F, all.missing = F, add = coll)
   assert_numeric(dim_time, min.len = 1)
   assert_numeric(id_vec, min.len = 1)
   assert_matrix(req_nc_coords, ncols = 2)
-
-
+  
+  if(!coll$isEmpty()) {
+    coll$push("Possible cause: No matching values found for req_nc_coords.
+            Possible fix: Modify parameter round_dec to prevent rounding errors.")
+    reportAssertions(coll)
+  }
+  
   
   dt_all_vars <- data.table()  # Initialize an empty data.table
-
+  
   # Loop through each requested variable
   for (var in req_var) {
     dt <- as.data.table(coord_idxs)  # Convert coordinate indices to data.table
     dt[, row := .I]  # Add a row index
-
+    
     # Preallocate vectors for results
     id_vec <- id_vec
     x_idxs <- dt$x_idxs
     y_idxs <- dt$y_idxs
     n <- nrow(dt)
     tmp_list <- vector("list", n)
+    
     
     # Read all required data in one go
     all_vars <- ncvar_get(nc, varid = var, start = c(1, 1, 1), count = c(-1, -1, -1))
@@ -263,7 +271,7 @@ get_variable_data <- function(nc, req_var, coord_idxs, dim_time, id_vec, req_nc_
       var = unlist(tmp_list)
     )
     
-
+    
     # dt <- rbindlist(dt_list)  # Combine the list of data.tables into one
     setnames(dt, "var", var)  # Rename the variable column to the variable name
     dt_all_vars <- if (ncol(dt_all_vars) == 0) dt else cbind(dt_all_vars, dt[, .SD, .SDcols = var])  # Combine with the main data.table
@@ -274,9 +282,10 @@ get_variable_data <- function(nc, req_var, coord_idxs, dim_time, id_vec, req_nc_
     y_val <- "y"
     setnames(dt_all_vars, old = c("lon", "lat"), new = c(x_val, y_val))
   }
-
+  
   return(dt_all_vars)  # Return the combined data.table
 }
+
 
 
 
