@@ -56,10 +56,11 @@ The Allas module must be loaded. This only needs to be done once for a project.
     2. The most efficient way of running is to use parallel processing. This can be done by setting ```--cpus-per-task=<n-cores>``` in the batch job script. The number of cores should be set according to the number of years there are to process so that ```n-cores = n-years + 1```. Maximum ```n-cores``` is ```40```. The value will also depend on the required ```--mem-per-cpu```.
     3. If there are errors indicating failures when writing files then the ```#SBATCH --gres=nvme:<GB of fast storage>``` may also need to be modified to allocate more space.
 
+
 9. **Output**
     
 
-    1. The programme saves a ```data.table``` called ```var_dt``` as a ```.rdata``` object into the provided ```save_path``` directory with the name ```fmi_vars_<timestamp>.rdata```. 
-    2. The table contains the extracted variables as well as an ```id``` column that corresponds to the row number in the requested coordinates matrix. 
-    3. The ```x``` and ```y``` are the nearest neighbours of the requested coordinates with the corresponding  ```id```.
-    4. When extracting the data for a polygon the ```id``` is not important. The programme searches for the points within the polygon at the requested resolution. If none are found the centroid of the polygon is used. 
+    The programme saves two ```data.tables``` as ```.rdata``` objects into the provided                               ```save_path``` directory:
+    
+    1. ```fmi_vars_<timestamp>.rdata``` contains the extracted variables as well as an ```id``` column that             indicates the ```climID``` required by ```Prebas```. 
+    2. ```climID_lookup_<timestamp>.rdata``` contains a lookup table that is the provided ```req_coords```/ ```req_nc_coords``` matrix or the matrix of coordinates within the provided ```polygon``` with added  ```ìd``` and ```climID``` columns to match the requested coordinates with the extracted data.
