@@ -533,6 +533,26 @@ get_nc_vars_from_bucket <- function(object, ...) {
 
 ##### ------------------- START UTILITY FUNCTIONS ------------------- #####
 
+# Function to get co2 data from the co2_mm_mol_1961_2024 file
+add_co2_mm_mol_1961_2024_to_dt <- function(dt, co2_dt) {
+  
+  # Validate inputs
+  assert_data_table(dt)
+  assert_data_table(co2_dt)
+  assert_names(colnames(dt), must.include = "time")
+  assert_names(colnames(co2_dt), must.include = c("year", "monthly.average"))
+  assert_date(dt$time, any.missing = FALSE)
+  
+  co2_unique_years <- unique(co2_dt[between(year, range(year(dt$time))[1], range(year(dt$time))[2])])
+  dt[, c("year", "month") := .(year(time), month(time))]
+  dt[co2_unique_years, on = .(year, month), co2 := i.monthly.average]
+  
+  # Delete year and month columns
+  dt[, `:=`(year = NULL, month = NULL)]
+  
+  return(dt)
+}
+
 
 # Helper Function to Handle Coordinates Precedence
 handle_process_data_input_coords <- function(polygon, req_coords, req_nc_coords, filtered_fmi_lookup_dt, resolution, round_dec) {

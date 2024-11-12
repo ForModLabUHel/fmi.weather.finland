@@ -8,7 +8,8 @@ runner_path: scripts/fmi_parallel_runner.R
 test_helper_funs:
   - tests/helper_functions.R
 fmi_allas_bucket_name: 2000994-fmi
-lookup_dt_name: fmi_resolutions_1_5_9_lookup_dt.rdata
+lookup_dt_name: rdata/fmi_resolutions_1_5_9_lookup_dt.rdata
+co2_dt_name: rdata/co2_mm_mol_1961_2024.rdata
 join_by_vec:
   - id 
   - time 

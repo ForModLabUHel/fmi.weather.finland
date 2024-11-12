@@ -233,9 +233,12 @@ get_variable_data <- function(nc, req_var, coord_idxs, dim_time, id_vec, req_nc_
   assert_matrix(req_nc_coords, ncols = 2)
   
   if(!coll$isEmpty()) {
-    coll$push("Possible cause: No matching values found for req_nc_coords.
-            Possible fix: Modify parameter round_dec to prevent rounding errors.")
+    coll$push(c("Possible cause: No matching values found for req_nc_coords.",
+                "Possible fixes:", "1. Modify parameter round_dec to prevent rounding errors.",
+                "2. Provide req_coords instead of req_nc_coords." ))
+    
     reportAssertions(coll)
+    
   }
   
   

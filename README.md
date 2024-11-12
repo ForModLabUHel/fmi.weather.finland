@@ -53,14 +53,15 @@ The Allas module must be loaded. This only needs to be done once for a project.
 8. **Running as a batch job**
 
     1. There is an example batch job script here: [Example-batch-job](https://github.com/ForModLabUHel/fmi.weather.finland/blob/fmi-from-allas/docs/batch_job_example.txt).
-    2. The most efficient way of running is to use parallel processing. This can be done by setting ```--cpus-per-task=<n-cores>``` in the batch job script. The number of cores should be set according to the number of years there are to process so that ```n-cores = n-years + 1```. Maximum ```n-cores``` is ```40```. The value will also depend on the required ```--mem-per-cpu```.
-    3. If there are errors indicating failures when writing files then the ```#SBATCH --gres=nvme:<GB of fast storage>``` may also need to be modified to allocate more space.
-
+    2. The most efficient way of running is to use parallel processing. This can be done by setting ```--cpus-per-task=<n-cores>``` in the batch job script. The number of cores should be set according to the number of years there are to process so that ```n-cores = n-years + 1```. Maximum ```n-cores``` is ```40```. The value will also depend on the required ```--mem-per-cpu```.  
+    When memory usage is high the number of cpu cores may have to be reduced considerably.
+    3. The ```#SBATCH --gres=nvme:<GB of fast storage>``` may also need to be modified to allocate more space if memory issues arise.
 
 9. **Output**
     
 
-    The programme saves two ```data.tables``` as ```.rdata``` objects into the provided                               ```save_path``` directory:
+        The programme saves two ```data.tables``` as ```.rdata``` objects into the provided ```save_path``` directory:
     
-    1. ```fmi_vars_<timestamp>.rdata``` contains the extracted variables as well as an ```id``` column that             indicates the ```climID``` required by ```Prebas```. 
-    2. ```climID_lookup_<timestamp>.rdata``` contains a lookup table that is the provided ```req_coords```/ ```req_nc_coords``` matrix or the matrix of coordinates within the provided ```polygon``` with added  ```ìd``` and ```climID``` columns to match the requested coordinates with the extracted data.
+    1. ```fmi_vars_<TYPE>_<timestamp>.rdata``` contains the extracted variables as well as an ```id``` column that indicates the ```climID``` required by ```Prebas```. ```TYPE``` indicates whether the data is the raw extracted data (```TYPE=RAW```) or if it is in Prebas format (```TYPE=PREBAS```).
+    2. ```climID_lookup_<timestamp>.rdata``` contains a lookup table that is the provided ```req_coords```/ ```req_nc_coords``` matrix or the matrix of coordinates within the provided ```polygon``` with added  ```ìd``` and ```climID``` columns to match the requested coordinates with the extracted data. 
+    

@@ -48,7 +48,92 @@ get_in_parallel <- function(data, fun, cores=8, libs = list(), sources = list(),
   )
 }
 
-
+#' Transform raw FMI data to PREBAS format
+#'
+#' This function transforms raw FMI data into a format suitable for use with PREBAS.
+#'
+#' @param fmi_dt A data.table containing the raw FMI data.
+#' @param config A list containing the necessary configuration parameters. Must include:
+#' \describe{
+#'   \item{fmi_allas_bucket_name}{Name of the S3 bucket containing the CO2 data.}
+#'   \item{co2_dt_name}{Name of the CO2 data object within the S3 bucket.}
+#' }
+#' @param region The region of the S3 bucket.
+#'
+#' @return A data.table with the transformed FMI data in the PREBAS format.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' config <- list(fmi_allas_bucket_name = "my-bucket", co2_dt_name = "co2_data.rda")
+#' transformed_data <- transform_raw_fmi_to_prebas(fmi_dt, config, "eu-west-1")
+#' }
+transform_raw_fmi_to_prebas <- function(fmi_dt, config = NULL, region) {
+  
+  if (is.null(config)) {
+    stop("No config file provided!")
+  }
+  
+  # Validate configuration object
+  assert_list(config, null.ok = FALSE)
+  assert_names(names(config), must.include = c("fmi_allas_bucket_name", "co2_dt_name"))
+  
+  # Validate fmi_dt 
+  assert_data_table(fmi_dt, any.missing = FALSE) 
+  assert_names(colnames(fmi_dt), must.include = c("id", "time", "x", "y", "Rh", "Tmin", "Tmax", "Globrad"))
+  
+  # Extract necessary values from config
+  fmi_allas_bucket_name <- config$fmi_allas_bucket_name
+  co2_dt_name <- config$co2_dt_name
+  
+  # Check that bucket and object exist
+  assert_true(bucket_exists(fmi_allas_bucket_name, region = region)) # Check if the S3 bucket exists
+  assert_true(head_object(co2_dt_name, bucket = fmi_allas_bucket_name, region = region)[[1]] == TRUE) # Check that the co2 file exists in the bucket
+  
+  # Get co2 from Allas
+  co2_dt <- s3read_using(FUN = load_rdata_file, bucket = fmi_allas_bucket_name, 
+                         object = co2_dt_name, opts = list(region = region))
+  
+  # Define functions
+  par_fun <- function(x) x * 0.48 * 4.6/1000
+  vpd_fun <- function(rh, tmin, tmax) VPD_from_rh_tmin_tmax(rh, tmin, tmax)
+  remove_feb_29 <- function(dt, time_col) {
+    dt[!(format(get(time_col), "%d.%m") == "29.02")]
+  }
+  
+  
+  # Define operations
+  operations <- list(
+    list(col_name = "par", 
+         fun = par_fun, 
+         cols = "Globrad",
+         names_cols = "x", 
+         args = list()),
+    
+    list(col_name = "vpd", 
+         fun = vpd_fun, 
+         cols = c("Rh", "Tmin", "Tmax"), 
+         names_cols = c("rh", "tmin", "tmax"),
+         args = list()),
+    
+    list(col_name = "co2", 
+         fun = add_co2_mm_mol_1961_2024_to_dt,
+         args = list(co2_dt = co2_dt)),
+    
+    list(fun = remove_feb_29, 
+         args = list(time_col = "time")),
+    
+    list(fun = setnames,
+         args = list(old = colnames(fmi_dt), 
+                     new = c("id", "time", "x", "y", "Globrad", "Rh", "precip", "tair", "tmax", "tmin", "par", "vpd", "co2"))),
+    
+    list(fun = function(dt) dt[, `:=`(Globrad = NULL, Rh = NULL)])
+  )
+  
+  transformed_fmi_dt <- transform_and_add_columns(fmi_dt, operations)
+  
+  return(transformed_fmi_dt)
+}
 
 
 #' Set Up a New Environment
@@ -332,6 +417,7 @@ get_nc_vars_parallel <- function(return_list, opts = NULL) {
 #'
 #' @param env An environment where configurations and data will be loaded.
 #' @param save_path A character string specifying the directory to save temporary files. Default is the current working directory.
+#' @param format_to_prebas Logical. If true the output data.table will be transformed into the Prebas input format. Default is `TRUE`.
 #' @param opts A list of additional options for the function. Default is `NULL`.
 #' @param ... Additional parameters to pass to the `get_fmi_data_from_allas` function.
 #' @return This function does not return a value but sets up the environment and runs a script in a new process.
@@ -340,13 +426,16 @@ get_nc_vars_parallel <- function(return_list, opts = NULL) {
 #' @export
 main_function <- function(env,
                           save_path = getwd(),
+                          format_to_prebas = T,
                           opts = NULL,
                           ...) {
+  
   # Input validations
   assert_environment(env)
   assert_directory(save_path, access = "rw")
   assert_file_exists(env$runner_path)
-  assert_list(opts, null.ok = TRUE)
+  assert_list(opts, null.ok = T)
+  assert_logical(format_to_prebas)
   
   # Get params for function
   args <- list(...)
@@ -355,7 +444,7 @@ main_function <- function(env,
   return_list <- do.call(get_fmi_data_from_allas, c(args, list(opts = opts, config = env$config)))
   
   # Add objects to env
-  data <- list(return_list = return_list, opts = opts, save_path = save_path)
+  data <- list(return_list = return_list, opts = opts, save_path = save_path, format_to_prebas = format_to_prebas)
   env$data <- data
   
   # Save the return_list to a temporary file and unlink it on exit
@@ -366,10 +455,11 @@ main_function <- function(env,
   
   # Call the script that runs the parallel function using processx
   tryCatch({
-    runner_obj <- processx::run("Rscript", c(env$runner_path, temp_file), echo = TRUE)
+    runner_obj <- processx::run("Rscript", c(env$runner_path, temp_file), echo = T)
   }, error = function(runner_obj) {
     stop(paste0("Error running ", env$runner_path))
   })
+  
 }
 
 
