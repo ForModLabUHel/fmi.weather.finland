@@ -646,6 +646,7 @@ handle_process_data_input_coords <- function(polygon, req_coords, req_nc_coords,
     req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, is_longlat = FALSE)
   }
   req_coords_lookup_dt <- create_clim_id_lookup_dt(req_coords, req_nc_coords)
+  req_coords_lookup_dt[, resolution_km := resolution] # Add resolution to lookup dt
   list(req_coords = req_coords, req_nc_coords = unique(req_nc_coords), req_coords_lookup_dt = req_coords_lookup_dt)
 }
 
@@ -678,10 +679,15 @@ handle_coords_input_precedence <- function(polygon, req_coords, req_nc_coords) {
 save_fmi_files_with_print <- function(save_path, objects, filenames) {
   invisible(lapply(seq_along(objects), function(i) {
     full_path <- file.path(save_path, filenames[i])
-    object <- objects[i]
+    object <- objects[[i]]
+    filename <- filenames[[i]]
+    object_name <- strsplit(filename, split = "\\.")[[1]][1]
+    
+    # Assign the object to the captured name 
+    assign(object_name, object)
     
     print(paste0("Saving ", full_path, "..."))
-    save(object, file = full_path)
+    save(list = object_name, file = full_path)
     print("Done.")
   }))
 }
