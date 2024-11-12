@@ -268,6 +268,85 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
 
 
 
+#' Apply Transformations and Add Columns to a Data Table
+#'
+#' This function applies a series of transformations to a data.table based on a list of operations.
+#' Each operation specifies a function to be applied, the columns involved, and the arguments to be passed to the function.
+#'
+#' @param dt A `data.table` object containing the data to be transformed.
+#' @param operations A list of operations to be applied. Each operation should be a named list with the following components:
+#' \itemize{
+#'   \item \strong{col_name}: A string specifying the name of the new column to be added. Required if \code{cols} is not NULL.
+#'   \item \strong{fun}: A function to be applied to the specified columns or to the entire data.table.
+#'   \item \strong{cols}: A character vector specifying the columns to be passed to the function. Can be NULL.
+#'   \item \strong{names_cols}: A character vector specifying the names of the arguments for the columns. Required if \code{cols} is not NULL.
+#'   \item \strong{args}: A list of additional arguments to be passed to the function. Can be NULL.
+#' }
+#' 
+#' @return The transformed `data.table`.
+#' 
+#' @examples
+#' library(data.table)
+#' library(checkmate)
+#' 
+#' dt <- data.table(
+#'   id = 1:5,
+#'   value1 = c(10, 20, 30, 40, 50),
+#'   value2 = c(5, 15, 25, 35, 45),
+#'   value3 = c(1, 1, 1, 1, 1),
+#'   time = as.Date(c("2000-02-29", "2021-03-01", "2020-02-28", "2020-02-29", "2022-02-28"))
+#' )
+#' 
+#' operations <- list(
+#'   list(col_name = "value1", fun = scale_by_2, cols = c("value1"), names_cols = c("x"), args = list()),
+#'   list(col_name = "value2", fun = log_transform, cols = "value2", names_cols = c("x"), args = list()),
+#'   list(col_name = "value_sum", fun = sum_three_columns, cols = c("value1", "value2", "value3"), names_cols = c("x", "y", "z"), args = list()),
+#'   list(col_name = "category", fun = categorize_value1, cols = "value1", names_cols = c("x"), args = list()),
+#'   list(col_name = "time", fun = remove_feb_29, cols = NULL, args = list(time_col = "time"))
+#' )
+#' 
+#' result_dt <- transform_and_add_columns(dt, operations)
+#' print(result_dt)
+#'
+#' @export
+transform_and_add_columns <- function(dt, operations = list()) {
+  
+  # Validate inputs
+  assert_data_table(dt, any.missing = FALSE)
+  assert_list(operations, types = "list")
+  
+  for (operation in operations) {
+    assert_list(operation, names = "named", min.len = 1, max.len = 5)
+    assert_function(operation$fun)
+    assert(checkmate::check_null(operation$cols), checkmate::check_character(operation$cols))
+    assert_list(operation$args, any.missing = FALSE, null.ok = TRUE)
+    assert_character(operation$cols, null.ok = TRUE)
+    
+    col_name <- operation$col_name
+    fun <- operation$fun
+    cols <- operation$cols
+    names_cols <- operation$names_cols
+    args <- operation$args
+    
+    if (is.null(cols)) {
+      # Call a function that takes dt as its first argument
+      dt <- do.call(fun, c(list(dt), args))
+    } else {
+      assert_list(operation, names = "named", len = 5)
+      assert_string(operation$col_name)
+      assert_names(colnames(dt), must.include = cols)
+      assert_character(operation$names_cols, any.missing = FALSE)
+      
+      # Apply the function to specific columns of dt
+      selected_cols <- as.list(dt[, ..cols])
+      named_list <- setNames(selected_cols, names_cols)
+      dt[, (col_name) := do.call(fun, c(named_list, args))]
+    }
+  }
+  
+  return(dt)
+}
+
 
 
 #' Create Climate ID Lookup Data Table
