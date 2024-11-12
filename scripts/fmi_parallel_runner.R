@@ -1,3 +1,7 @@
+# This script runs the parallel part of extracting the FMI data and saves the output. 
+# The script reads a temporary file containing the required information to run. 
+# The code is executed inside the environment that is loaded from the file.
+
 
 
 local({
@@ -29,14 +33,15 @@ local({
     req_coords_lookup_dt <- data$return_list$req_coords_lookup_dt
     format_to_prebas <- data$format_to_prebas
     
+    print(paste0("Lookup table:"))
     print(req_coords_lookup_dt)
+    cat("\n")
     
     timestamp <- generate_unique_filename("", "rdata")
     fmi_vars_filename <- paste0("fmi_vars_RAW", timestamp)
     lookup_filename <- paste0("climID_lookup", timestamp)
     
     if(format_to_prebas) {
-      cat("\n")
       print(paste0("Transforming to Prebas format..."))
       var_dt <- transform_raw_fmi_to_prebas(var_dt, config, region) # To Prebas format
       print("Done")

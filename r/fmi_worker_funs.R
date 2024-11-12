@@ -639,6 +639,7 @@ handle_process_data_input_coords <- function(polygon, req_coords, req_nc_coords,
     req_coords <- req_nc_coords
     colnames(req_nc_coords) <- NULL
   } else if (!is.null(req_coords)) {
+    print(paste0("Finding nearest neighbours..."))
     req_nc_coords <- get_req_nc_coords(req_coords, reference_coords_dt = filtered_fmi_lookup_dt, round_dec = round_dec, is_longlat = FALSE)
   } else if (!is.null(polygon)) {
     req_coords <- extract_polygon_coords_with_res(polygon = polygon, reference_dt = filtered_fmi_lookup_dt, resolution = resolution)
@@ -680,7 +681,7 @@ save_fmi_files_with_print <- function(save_path, objects, filenames) {
     object <- objects[i]
     
     print(paste0("Saving ", full_path, "..."))
-    # save(object, file = full_path)
+    save(object, file = full_path)
     print("Done.")
   }))
 }

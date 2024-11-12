@@ -60,7 +60,7 @@ The Allas module must be loaded. This only needs to be done once for a project.
 9. **Output**
     
 
-        The programme saves two ```data.tables``` as ```.rdata``` objects into the provided ```save_path``` directory:
+    The programme saves two ```data.tables``` as ```.rdata``` objects into the provided ```save_path``` directory:
     
     1. ```fmi_vars_<TYPE>_<timestamp>.rdata``` contains the extracted variables as well as an ```id``` column that indicates the ```climID``` required by ```Prebas```. ```TYPE``` indicates whether the data is the raw extracted data (```TYPE=RAW```) or if it is in Prebas format (```TYPE=PREBAS```).
     2. ```climID_lookup_<timestamp>.rdata``` contains a lookup table that is the provided ```req_coords```/ ```req_nc_coords``` matrix or the matrix of coordinates within the provided ```polygon``` with added  ```ìd``` and ```climID``` columns to match the requested coordinates with the extracted data. 

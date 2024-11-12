@@ -1,4 +1,4 @@
-# For batch jobs set TMPDIR=LOCAL_SCRATCH if using #SBATCH --gres=nvme:<GB of fast storage>
+# For batch jobs set TMPDIR=${LOCAL_SCRATCH} if using #SBATCH --gres=nvme:<GB of fast storage>
 # Otherwise set TMPDIR="/scratch/project_2000994/Rtmp_heap". Keep as is for interactive jobs.
 TMPDIR=${LOCAL_SCRATCH}
 TMP="/scratch/project_2000994/Rtmp_heap"
