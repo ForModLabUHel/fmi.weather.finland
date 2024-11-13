@@ -2,11 +2,13 @@
 # The script must be run on Puhti. First load and run the fetch_file_from_github function
 # to load the setup_and_run function. Then provide the parameters and run with either a
 # set of requested coordinates or a polygon.
-# The set of requested coordinates can be provided as either req_coords or req_nc_coords.
-# When req_coords is provided the programme will find the nearest neighbours for the coordinates.
-# If you know the exact coordinates that exist in the FMI data then you can provide them as req_nc_coords (faster).
-# Make sure to provide the correct round_dec (default = 3) to round by based on the number of decimals.
-# For example if you provide a coordinate value of 300189.87 then round_dec must be <= 2.
+# Input:
+  # The set of requested coordinates can be provided as either req_coords or req_nc_coords.
+  # When req_coords is provided the programme will find the nearest neighbours for the coordinates.
+  # If you know the exact coordinates that exist in the FMI data then you can provide them as req_nc_coords (faster).
+  # Make sure to provide the correct round_dec (default = 3) to round by based on the number of decimals.
+  # For example if you provide a coordinate value of 300189.87 then round_dec must be <= 2.
+  # If you provide a polygon it must be a SpatialPolygons object.
 
 
 
@@ -61,7 +63,7 @@ resolution <- 5 # Resolution in km (1, 5 or 9)
 years <- c(1961) # For which years to extract (1961:2023 are full years)
 save_path <- paste0(getwd()) # Where to save the extracted data.table as .rdata
 repo_url <- "https://github.com/ForModLabUHel/fmi.weather.finland.git" # Project repository to use
-
+format_to_prebas <- T # TRUE for Prebas format, FALSE for raw data. Default is TRUE.
 
 
 
