@@ -27,7 +27,7 @@ The Allas module must be loaded. This only needs to be done once for a project.
 
 6. **Set environment variables:**
 
-    Some environment variables must be set before running. Perhaps the easiest way is by creating a     ```.Renviron``` file in the working directory from which the programme will be executed.
+    Some environment variables must be set before running. Perhaps the easiest way is by creating a ```.Renviron``` file in the working directory from which the programme will be executed.
     
     Create an empty ```.Renviron``` like this:
     1. Open a terminal
@@ -41,9 +41,9 @@ The Allas module must be loaded. This only needs to be done once for a project.
 
     1. In the Files Pane, click on the three dots (Go to directory) and paste in your directory. You should see          the ```.Renviron``` file in the files tab.
     2. Open the ```.Renviron``` file and paste in the contents from here:
-    [.Renviron-contents](https://github.com/ForModLabUHel/fmi.weather.finland/blob/fmi-from-allas/docs/Renviron_example.txt).
+    [.Renviron-contents](https://github.com/ForModLabUHel/fmi.weather.finland/blob/main/docs/Renviron_example.txt).
     3. Create a new R script and paste in the contents of the example script from here:
-       [Example-script](https://github.com/ForModLabUHel/fmi.weather.finland/blob/fmi-from-allas/scripts/get_fmi_from_allas.R).
+       [Example-script](https://github.com/ForModLabUHel/fmi.weather.finland/blob/main/scripts/get_fmi_from_allas.R).
     4. Run the command ```setwd(</your_working_dir>)```.
     5. Click on the ```Session``` tab in the top bar and select ```Terminate R...```.
     6. After R restarts you should see ```</your_working_dir>``` in the Files Pane and ```getwd()``` should point to it too.
@@ -52,7 +52,7 @@ The Allas module must be loaded. This only needs to be done once for a project.
     
 8. **Running as a batch job**
 
-    1. There is an example batch job script here: [Example-batch-job](https://github.com/ForModLabUHel/fmi.weather.finland/blob/fmi-from-allas/docs/batch_job_example.txt).
+    1. There is an example batch job script here: [Example-batch-job](https://github.com/ForModLabUHel/fmi.weather.finland/blob/main/docs/batch_job_example.txt).
     2. The most efficient way of running is to use parallel processing. This can be done by setting ```--cpus-per-task=<n-cores>``` in the batch job script. The number of cores should be set according to the number of years there are to process so that ```n-cores = n-years + 1```. Maximum ```n-cores``` is ```40```. The value will also depend on the required ```--mem-per-cpu```. When memory usage is high the number of cpu cores may have to be reduced considerably.
     3. The ```#SBATCH --gres=nvme:<GB of fast storage>``` may also need to be modified to allocate more space if memory issues arise. As each individual ```NetCDF``` file to process is around ```1 GB``` in size, the memory in ```GB``` required here is roughly ```n-cores```.
 

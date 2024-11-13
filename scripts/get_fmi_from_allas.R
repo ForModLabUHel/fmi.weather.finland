@@ -3,12 +3,12 @@
 # to load the setup_and_run function. Then provide the parameters and run with either a
 # set of requested coordinates or a polygon.
 # Input:
-  # The set of requested coordinates can be provided as either req_coords or req_nc_coords.
-  # When req_coords is provided the programme will find the nearest neighbours for the coordinates.
-  # If you know the exact coordinates that exist in the FMI data then you can provide them as req_nc_coords (faster).
-  # Make sure to provide the correct round_dec (default = 3) to round by based on the number of decimals.
-  # For example if you provide a coordinate value of 300189.87 then round_dec must be <= 2.
-  # If you provide a polygon it must be a SpatialPolygons object.
+# The set of requested coordinates can be provided as either req_coords or req_nc_coords.
+# When req_coords is provided the programme will find the nearest neighbours for the coordinates.
+# If you know the exact coordinates that exist in the FMI data then you can provide them as req_nc_coords (faster).
+# Make sure to provide the correct round_dec (default = 3) to round by based on the number of decimals.
+# For example if you provide a coordinate value of 300189.87 then round_dec must be <= 2.
+# If you provide a polygon it must be a SpatialPolygons object.
 
 
 
@@ -45,7 +45,7 @@ fetch_file_from_github <- function(repo, file_path, branch = "main") {
 
 repo <- "ForModLabUHel/fmi.weather.finland"
 file_path <- "r/init_setup.R"
-branch <- "fmi-from-allas"
+branch <- "main"
 
 # Get init functions from github
 init_funs <- fetch_file_from_github(repo, file_path, branch)
@@ -96,7 +96,7 @@ req_coords <- as.matrix(example_req_coords_dt[, c("E", "N")]) # The coords are p
 params <- list(req_coords = req_coords, resolution = resolution, years = years)
 
 # Combine arguments
-setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
+setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, format_to_prebas = format_to_prebas))
 
 # RUN
 result <- do.call(setup_and_run, setup_and_run_args)
@@ -130,7 +130,7 @@ spatial_polygons <- SpatialPolygons(list(polygons), proj4string = CRS("EPSG:3067
 params <- list(polygon = spatial_polygons, resolution = resolution, years = years)
 
 # Combine arguments
-setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, branch = branch))
+setup_and_run_args <- c(params, list(save_path = save_path, repo_url = repo_url, format_to_prebas = format_to_prebas))
 
 # RUN
 result <- do.call(setup_and_run, setup_and_run_args)
