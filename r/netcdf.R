@@ -44,6 +44,42 @@ open_netcdf <- function(netCdf_path) {
 }
 
 
+
+
+#' Get Indices of Coordinates in Dimensions
+#'
+#' This function returns the indices of specified coordinates in a given dimension vector.
+#' If a coordinate is not found in the dimension vector, a warning is issued and `NA` is returned for that coordinate.
+#'
+#' @param coords A numeric vector of coordinates to find in the dimension vector. Must not contain missing values.
+#' @param dim A numeric vector representing the dimensions. Must not contain missing values and must be unique.
+#' @return A numeric vector of indices corresponding to the provided coordinates. If a coordinate is not found, `NA` is returned for that coordinate.
+#' @examples
+#' coords <- c(2.0, 3.0)
+#' dim <- c(1.0, 2.0, 3.0, 4.0)
+#' get_variable_indices(coords, dim)
+#' @import checkmate
+#' @export
+get_variable_indices <- function(coords, dim) {
+  # Input validation
+  assertNumeric(coords, any.missing = FALSE, min.len = 1, .var.name = "coords")
+  assertNumeric(dim, any.missing = FALSE, unique = TRUE, .var.name = "dim")
+  
+  indices <- sapply(coords, function(x) {
+    index <- which(dim == x)
+    if (length(index) == 0) {
+      warning(paste("No index found for req_nc_coords value ", x, "."))
+      return(NA)
+    }
+    return(index)
+  })
+  indices
+}
+
+
+
+
+
 #' Get Dimensions from NetCDF File
 #'
 #' This function retrieves the longitude, latitude, and time dimensions from a NetCDF file.
@@ -225,7 +261,7 @@ get_variable_data <- function(nc, req_var, coord_idxs, dim_time, id_vec, req_nc_
   coll <- makeAssertCollection() # Collection for error messages
   assert_class(nc, "ncdf4")
   assert_character(req_var, min.len = 1)
-  assert_data_frame(coord_idxs, min.rows = 1, any.missing = F, all.missing = F, ncols = 2)
+  assert_data_frame(coord_idxs, min.rows = 1, any.missing = F, all.missing = F, ncols = 2, add = coll)
   x_idxs_assertion <- assert_numeric(coord_idxs$x_idxs, any.missing = F, all.missing = F, add = coll)
   y_idxs_assertion <- assert_numeric(coord_idxs$y_idxs, any.missing = F, all.missing = F, add = coll)
   assert_numeric(dim_time, min.len = 1)
@@ -369,8 +405,8 @@ get_netcdf_by_nearest_coords <- function(nc_input, req_coords, req_var = NULL, i
   req_nc_coords <- round(req_nc_coords, round_dec)
   
   # Match the requested coordinates to the NetCDF dimensions
-  x_idxs <- sapply(req_nc_coords[,1], function(x) which(unique(dims$dim_x) == x))
-  y_idxs <- sapply(req_nc_coords[,2], function(x) which(unique(dims$dim_y) == x))
+  x_idxs <- get_variable_indices(req_nc_coords[,1], unique(dims$dim_x))
+  y_idxs <- get_variable_indices(req_nc_coords[,2], unique(dims$dim_y))
   coord_idxs <- cbind(x_idxs, y_idxs)
   
   # To data.table

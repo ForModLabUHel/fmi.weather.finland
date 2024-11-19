@@ -7,7 +7,8 @@
 # When req_coords is provided the programme will find the nearest neighbours for the coordinates.
 # If you know the exact coordinates that exist in the FMI data then you can provide them as req_nc_coords (faster).
 # Make sure to provide the correct round_dec (default = 3) to round by based on the number of decimals.
-# For example if you provide a coordinate value of 300189.87 then round_dec must be <= 2.
+# For example if you provide a coordinate value of 300189.87 then round_dec must be <= 2. 
+# Provide Inf when no rounding is required.
 # If you provide a polygon it must be a SpatialPolygons object.
 
 
