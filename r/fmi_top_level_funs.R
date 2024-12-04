@@ -80,7 +80,8 @@ transform_raw_fmi_to_prebas <- function(fmi_dt, config = NULL, region) {
   
   # Validate fmi_dt 
   assert_data_table(fmi_dt, any.missing = FALSE) 
-  assert_names(colnames(fmi_dt), must.include = c("id", "time", "x", "y", "Rh", "Tmin", "Tmax", "Globrad"))
+  assert_names(colnames(fmi_dt), must.include = c("id", "time", "x", "y", "Globrad", 
+                                                  "Rh", "RRday", "Tday", "Tmax", "Tmin"))
   
   # Extract necessary values from config
   fmi_allas_bucket_name <- config$fmi_allas_bucket_name
