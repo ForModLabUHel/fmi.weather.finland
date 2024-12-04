@@ -162,8 +162,9 @@ assert_numeric_with_warning <- function(x, lower, upper, var_name) {
 #' This function finds the nearest coordinates from a set of requested coordinates based on a given coordinate system.
 #'
 #' @param req_coords A matrix of requested coordinates.
-#' @param dim_x A vector of x-dimension values (e.g., longitude or easting).
-#' @param dim_y A vector of y-dimension values (e.g., latitude or northing).
+#' @param dim_x A vector of x-dimension values (e.g., longitude or easting). Default is NULL
+#' @param dim_y A vector of y-dimension values (e.g., latitude or northing). Default is NULL
+#' @param nc_coords A matrix of x and y coordinates values (e.g., latitude or northing). Default is NULL
 #' @param round_dec An integer indicating the number of decimal places to round the coordinates.
 #' @param is_longlat A logical value indicating whether the coordinates are in longitude/latitude (TRUE) or in a projected coordinate system (FALSE).
 #'
@@ -177,16 +178,24 @@ assert_numeric_with_warning <- function(x, lower, upper, var_name) {
 #' find_nearest_coords(req_coords, dim_lon, dim_lat, round_dec, is_longlat = FALSE)
 #' }
 #' @export
-find_nearest_coords <- function(req_coords, dim_x, dim_y, round_dec, is_longlat = TRUE) {
+find_nearest_coords <- function(req_coords, dim_x = NULL, dim_y = NULL, nc_coords = NULL, round_dec, is_longlat = TRUE) {
   
   # Input validations
+  assert_numeric(dim_x, any.missing = FALSE, min.len = 1, null.ok = TRUE)
+  assert_numeric(dim_y, any.missing = FALSE, min.len = 1, null.ok = TRUE)
   assert_matrix(req_coords, mode = "numeric", any.missing = FALSE, min.rows = 1, min.cols = 2)
-  assert_numeric(dim_x, any.missing = FALSE, min.len = 1)
-  assert_numeric(dim_y, any.missing = FALSE, min.len = 1)
+  assert_matrix(nc_coords, mode = "numeric", any.missing = FALSE, min.rows = 1, min.cols = 2, null.ok = TRUE)
   assert_int(round_dec, lower = 0)
   assert_flag(is_longlat)
   
-  nc_coords <- as.matrix(expand.grid(dim_x, dim_y))
+  
+  if(is.null(nc_coords)) {
+    assert_numeric(dim_x, any.missing = FALSE, min.len = 1, null.ok = FALSE)
+    assert_numeric(dim_y, any.missing = FALSE, min.len = 1, null.ok = FALSE)
+    nc_coords <- as.matrix(expand.grid(dim_x, dim_y))
+  }
+  
+  
   ind <- apply(req_coords, 1, function(coord) which.min(spDistsN1(pt = coord, pts = nc_coords, longlat = is_longlat)))
   ind_coords <- round(nc_coords[ind, ], round_dec)
   return(matrix(ind_coords, ncol = 2))
@@ -362,7 +371,12 @@ get_netcdf_by_nearest_coords <- function(nc_input, req_coords, req_var = NULL, i
   
   # If req_nc_coords is not provided, find the nearest coordinates
   if (is.null(req_nc_coords)) {
-    req_nc_coords <- find_nearest_coords(req_coords, dims$dim_x, dims$dim_y, round_dec, is_longlat)
+    req_nc_coords <- find_nearest_coords(req_coords = req_coords, 
+                                         dim_x = dims$dim_x, 
+                                         dim_y = dims$dim_y, 
+                                         nc_coords = NULL,
+                                         round_dec = round_dec,
+                                         is_longlat = is_longlat)
   }
   
   # Round to round_dec

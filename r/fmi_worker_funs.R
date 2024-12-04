@@ -246,10 +246,7 @@ get_req_nc_coords <- function(req_coords, reference_coords_dt, ...) {
   assert_matrix(req_coords, ncols = 2, min.rows = 1)
   assert_data_table(reference_coords_dt, min.rows = 1)
   
-  coords_x <- unique(reference_coords_dt[, 1][[1]])
-  coords_y <- unique(reference_coords_dt[, 2][[1]])
-  
-  args <- c(list(req_coords = req_coords, dim_x = coords_x, dim_y = coords_y), ...)
+  args <- c(list(req_coords = req_coords, nc_coords = as.matrix(reference_coords_dt[,c(1:2)])), ...)
   req_nc_coords <- do.call(find_nearest_coords, args)
   
   return(req_nc_coords)
