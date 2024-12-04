@@ -42,7 +42,7 @@ local({
     lookup_filename <- paste0("climID_lookup", timestamp)
     
     if(format_to_prebas) {
-      print(paste0("Transforming to Prebas format..."))
+      print(paste0("Transforming into Prebas format..."))
       var_dt <- transform_raw_fmi_to_prebas(var_dt, config, region) # To Prebas format
       print("Done")
       cat("\n")
