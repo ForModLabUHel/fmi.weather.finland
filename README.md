@@ -2,7 +2,10 @@
 
 
 ## Overview
-This repository contains code to extract [FMI meteorological data](https://en.ilmatieteenlaitos.fi/gridded-observations-on-aws-s3) from CSC Allas into Puhti. The code can be run on Puhti by using an interactive R session or as a batch job. The data can be extracted for a set of coordinates or for the coordinates within a provided polygon. The data is for 1961-2023 and can be requested at three different spatial resolutions (1km-by-1km, 5km-by-5km and 9km-by-9km). The code extracts the data for the nearest neighbours of the requested coordinates.
+This repository contains code to extract [FMI meteorological data](https://en.ilmatieteenlaitos.fi/gridded-observations-on-aws-s3) from CSC Allas into Puhti. The code can be run on Puhti by using an interactive R session or as a batch job. The data can be extracted for a set of coordinates or for the coordinates within a provided polygon. The data is for 1961-2024 and can be requested at three different spatial resolutions (1km-by-1km, 5km-by-5km and 9km-by-9km). The code extracts the data for 1 nearest neighbour/requested coordinate pair. 
+
+### Coordinate details
+Projection: epsg:3067 (ETRS89 / TM35FIN(E,N) – Finland)
 
 ## Instructions on use
 ### Setup
